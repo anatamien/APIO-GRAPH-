@@ -1,0 +1,13 @@
+.analysis-panel .analysis-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.analysis-panel .analysis-note{font-size:12px;line-height:1.5;color:var(--muted,#727780);margin:8px 0}
+.analysis-panel .analysis-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.analysis-panel .analysis-actions>button{flex:1;min-width:100px}
+.analysis-panel .analysis-error{padding:10px;border:1px solid #bc6959;border-radius:6px;background:rgba(188,105,89,.08);font-size:12px;line-height:1.5;margin:10px 0}
+.analysis-panel .analysis-preview{display:block;width:100%;height:auto;max-height:200px;border:1px solid var(--border,#e0e3e7);border-radius:7px;background:var(--surface,#fff);margin:10px 0}
+.analysis-panel .analysis-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;font-size:12px;margin:12px 0}
+.analysis-panel .analysis-summary dt{color:var(--muted,#727780)}
+.analysis-panel .analysis-summary dd{margin:0;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
+.analysis-panel .analysis-equation{width:100%;box-sizing:border-box;font-family:'Courier New',monospace;resize:vertical;min-height:56px}
+.analysis-panel .analysis-pending{border-top:1px solid var(--border,#e0e3e7);margin-top:16px;padding-top:12px}
+.analysis-panel .analysis-pending ul{padding-left:18px;font-size:12px;line-height:1.5}
+.analysis-panel .analysis-status{font-size:12px;line-height:1.5;margin-top:4px}

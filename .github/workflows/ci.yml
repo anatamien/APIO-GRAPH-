@@ -1,0 +1,27 @@
+name: Windows checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --global pnpm@11.25.0
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - run: rustup default 1.99.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:repository
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm test:e2e
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+      - run: pnpm build

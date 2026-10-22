@@ -1,0 +1,48 @@
+# Dependencies and generated output
+node_modules/
+node_modules_backup/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+src-tauri/target/
+src-tauri/gen/schemas/
+*.dmg
+*.msi
+*.exe
+*.app/
+*.zip
+*.tar.gz
+
+# Local machine, sensitive materials
+.env
+.env.*
+!.env.example
+*.key
+*.p12
+*.pfx
+*.pem
+*.mobileprovision
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+*.tmp
+*.bak
+
+# Local assistant/workspace configuration — never commit
+.codex/
+**/.codex/
+AGENTS.md
+**/AGENTS.md
+CLAUDE.md
+.cursor/
+.cursorrules
+.aider*
+
+# Internal working material
+scratch/
+local-only/

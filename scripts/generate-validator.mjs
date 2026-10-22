@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import Ajv2020 from 'ajv/dist/2020.js';
+import addFormats from 'ajv-formats';
+import standaloneCode from 'ajv/dist/standalone/index.js';
+const schema=JSON.parse(fs.readFileSync(new URL('../schemas/aph-1.0.schema.json',import.meta.url),'utf8'));
+const ajv=new Ajv2020({allErrors:true,strictNumbers:true,allowUnionTypes:true,code:{source:true,lines:true,esm:true}});
+addFormats(ajv);
+const validate=ajv.compile(schema);
+const folder=new URL('../src/domain/generated/',import.meta.url);
+fs.mkdirSync(folder,{recursive:true});
+const imports=[];
+const code=standaloneCode(ajv,validate).replace(/require\("([^\"]+)"\)/g,(_match,path)=>{
+ const name=`runtime${imports.length}`;
+ imports.push(`import * as ${name}Module from ${JSON.stringify(path+'.js')};\nconst ${name} = typeof ${name}Module.default === 'function' ? {default:${name}Module.default} : (${name}Module.default ?? ${name}Module);`);
+ return name;
+});
+fs.writeFileSync(new URL('aphValidator.js',folder),(imports.join('\n')+'\n'+code).trimEnd()+'\n');

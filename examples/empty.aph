@@ -1,0 +1,79 @@
+{
+  "format": "APIO_GRAPH_PROJECT",
+  "schemaVersion": "1.0.0",
+  "createdWith": {
+    "name": "APIO GRAPH",
+    "version": "1.0.0"
+  },
+  "project": {
+    "id": "f20831bf-54c5-4af5-993d-c56298b310e5",
+    "title": "Пустой проект",
+    "createdAt": "2026-10-19T10:00:00Z",
+    "updatedAt": "2026-10-19T10:00:00Z"
+  },
+  "page": {
+    "widthPx": 1200,
+    "heightPx": 800,
+    "background": "#FFFFFF",
+    "paddingPx": 64
+  },
+  "axes": {
+    "x": {
+      "label": "Время, с",
+      "unit": "",
+      "scale": "linear",
+      "mode": "manual",
+      "min": 0,
+      "max": 5,
+      "tickMode": "manual",
+      "tickStep": 1,
+      "tickOrigin": 0,
+      "minorDivisions": 1,
+      "grid": true,
+      "numberFormat": "auto",
+      "precision": 3,
+      "strokeWidthPt": 1,
+      "labelSizePt": 13
+    },
+    "y": {
+      "label": "Концентрация, мг/л",
+      "unit": "",
+      "scale": "linear",
+      "mode": "manual",
+      "min": 0,
+      "max": 10,
+      "tickMode": "manual",
+      "tickStep": 2,
+      "tickOrigin": 0,
+      "minorDivisions": 1,
+      "grid": true,
+      "numberFormat": "auto",
+      "precision": 3,
+      "strokeWidthPt": 1,
+      "labelSizePt": 13
+    }
+  },
+  "datasets": [],
+  "series": [],
+  "objects": [],
+  "calculations": [],
+  "legend": {
+    "visible": false,
+    "anchor": {
+      "mode": "page",
+      "pageX": 0.8,
+      "pageY": 0.1
+    }
+  },
+  "viewport": {
+    "xMin": 0,
+    "xMax": 5,
+    "yMin": 0,
+    "yMax": 10
+  },
+  "editor": {
+    "selectedObjectId": null,
+    "showPointMarkers": true
+  },
+  "extensions": {}
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-append-binary-transfer"
+description = "Enables the append_binary_transfer command without any pre-configured scope."
+commands.allow = ["append_binary_transfer"]
+
+[[permission]]
+identifier = "deny-append-binary-transfer"
+description = "Denies the append_binary_transfer command without any pre-configured scope."
+commands.deny = ["append_binary_transfer"]

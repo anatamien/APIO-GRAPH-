@@ -1,0 +1,17 @@
+import {test,expect} from '@playwright/test';
+import {addPairs,createProject,makeObject} from '../../src/domain/model';
+
+for(const language of ['ru','en'])test(`05.2 save as fits its single command and still downloads a new project (${language})`,async({page},info)=>{
+ await page.addInitScript(language=>localStorage.setItem('apio.settings',JSON.stringify({language,theme:'dark',largeUI:true})),language);const p=addPairs(createProject(),[{x:0,y:1}],'Raw');await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'save-review.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await page.locator('header').getByRole('button',{name:language==='ru'?'Варианты сохранения':'Save options',exact:true}).click();const menu=page.getByRole('menu'),item=menu.getByRole('menuitem');const label=await item.evaluate(e=>{const r=document.createRange();r.selectNodeContents(e);return r.getBoundingClientRect().width});expect((await menu.boundingBox())!.width-label).toBeLessThan(55);const pending=page.waitForEvent('download');await item.click();expect((await pending).suggestedFilename()).toMatch(/\.aph$/);await page.screenshot({path:info.outputPath(`save-as-${language}.png`)});
+});
+
+test('05.8 each color property has a direct native input and independent exact HEX values without Custom color disclosure',async({page},info)=>{
+ const p=addPairs(createProject(),[{x:0,y:1}],'Raw');p.objects=[makeObject('rectangle',[{mode:'data',x:2,y:2},{mode:'data',x:4,y:4}])];await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'colors.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});const header=(name:string)=>page.locator('header').getByRole('button',{name,exact:true});const seen=[];
+ for(const name of ['Свойства графика','Настройки','Экспорт']){
+  await header(name).click();const panel=page.locator('.panel');if(name==='Свойства графика')await panel.locator('.marker-settings > summary').click();
+  for(const picker of await panel.locator('.color-picker').all()){
+   await expect(picker.locator('summary')).not.toContainText('Другой цвет');const native=picker.locator('.swatches input[type=color]');await expect(native).toBeVisible();await expect(native).toHaveAccessibleName(/Выбрать цвет/);const before=await native.inputValue();await native.fill('#a1b2c3');await picker.getByText('HEX / RGB',{exact:true}).click();await expect(picker.locator('input[aria-label$=" HEX"]')).toHaveValue('#A1B2C3');await picker.locator('input[aria-label$=" HEX"]').fill(before);await picker.locator('input[aria-label$=" HEX"]').press('Enter');seen.push(await picker.locator('legend').textContent());
+  }await panel.getByRole('button',{name:'Закрыть',exact:true}).click();
+ }
+ await page.locator(`[data-object="${p.objects[0].id}"] rect`).click();for(const picker of await page.locator('.inspector .color-picker').all()){await expect(picker.locator('.swatches input[type=color]')).toBeVisible();seen.push(await picker.locator('legend').textContent())}expect(seen.length).toBeGreaterThanOrEqual(7);await info.attach('color-properties.json',{body:JSON.stringify(seen),contentType:'application/json'});await page.screenshot({path:info.outputPath('color-picker-direct.png')});
+});

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "APIO GRAPH",
+  "version": "1.0.0",
+  "identifier": "app.apio.graph",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [{
+      "label": "main",
+      "title": "APIO GRAPH",
+      "width": 600,
+      "height": 420,
+      "minWidth": 520,
+      "minHeight": 360,
+      "visible": false,
+      "resizable": false,
+      "maximizable": false,
+      "decorations": false,
+      "dragDropEnabled": true
+    }],
+    "security": {
+      "capabilities": ["main"],
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src ipc: http://ipc.localhost http://127.0.0.1:1420 ws://127.0.0.1:1420; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Education",
+    "publisher": "anatamien",
+    "shortDescription": "Scientific charts and data analysis",
+    "licenseFile": "../LICENSE",
+    "resources": {
+      "../LICENSE": "LICENSE.txt",
+      "../docs/THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+      "../docs/licenses/": "licenses/"
+    },
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "fileAssociations": [{
+      "ext": ["aph"],
+      "name": "APIO GRAPH project",
+      "description": "APIO GRAPH project",
+      "mimeType": "application/vnd.apio-graph+json",
+      "role": "Editor",
+      "rank": "Owner",
+      "contentTypes": ["app.apio.graph.project"],
+      "exportedType": {"identifier": "app.apio.graph.project", "conformsTo": ["public.json"]}
+    }],
+    "macOS": {"minimumSystemVersion": "13.3"},
+    "windows": {
+      "webviewInstallMode": {"type": "offlineInstaller", "silent": true},
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "displayLanguageSelector": true,
+        "languages": ["English", "Russian"]
+      }
+    }
+  }
+}

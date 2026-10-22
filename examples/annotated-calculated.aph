@@ -1,0 +1,538 @@
+{
+  "format": "APIO_GRAPH_PROJECT",
+  "schemaVersion": "1.0.0",
+  "createdWith": {
+    "name": "APIO GRAPH",
+    "version": "1.0.0"
+  },
+  "project": {
+    "id": "cef7190b-b941-43a0-b760-92b5c5353762",
+    "title": "Аннотации и аппроксимация",
+    "createdAt": "2026-10-19T10:00:00Z",
+    "updatedAt": "2026-10-19T10:00:00Z"
+  },
+  "page": {
+    "widthPx": 1200,
+    "heightPx": 800,
+    "background": "#FFFFFF",
+    "paddingPx": 64
+  },
+  "axes": {
+    "x": {
+      "label": "Время, с",
+      "unit": "",
+      "scale": "linear",
+      "mode": "manual",
+      "min": 0,
+      "max": 5,
+      "tickMode": "manual",
+      "tickStep": 1,
+      "tickOrigin": 0,
+      "minorDivisions": 1,
+      "grid": true,
+      "numberFormat": "auto",
+      "precision": 3,
+      "strokeWidthPt": 1,
+      "labelSizePt": 13
+    },
+    "y": {
+      "label": "Концентрация, мг/л",
+      "unit": "",
+      "scale": "linear",
+      "mode": "manual",
+      "min": 0,
+      "max": 10,
+      "tickMode": "manual",
+      "tickStep": 2,
+      "tickOrigin": 0,
+      "minorDivisions": 1,
+      "grid": true,
+      "numberFormat": "auto",
+      "precision": 3,
+      "strokeWidthPt": 1,
+      "labelSizePt": 13
+    }
+  },
+  "datasets": [
+    {
+      "id": "f0bd3f85-7807-4262-8e51-20553ee9a4e5",
+      "name": "Измерения",
+      "role": "raw",
+      "source": {
+        "kind": "import",
+        "displayName": "example.txt"
+      },
+      "points": [
+        {
+          "id": "e8a886a5-3627-4051-88d4-bb934f9d4297",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "id": "2f86d1e1-b07b-4793-81bd-3067c82aed14",
+          "x": 1,
+          "y": 3
+        },
+        {
+          "id": "6fc8a825-bfbf-461e-865f-6ff160c0a587",
+          "x": 2,
+          "y": 5
+        },
+        {
+          "id": "f84847f0-e710-4674-b2bc-3206c24283c9",
+          "x": 3,
+          "y": 7
+        },
+        {
+          "id": "3d1a2076-45ee-4017-b36a-f073a426f014",
+          "x": 4,
+          "y": 9
+        }
+      ]
+    },
+    {
+      "id": "38a9563a-59af-4415-97d6-959ce45c8a76",
+      "name": "Линейный тренд",
+      "role": "derived",
+      "source": {
+        "kind": "calculation",
+        "calculationId": "ef9a41e1-0638-4392-8fca-dd8d8b62857a"
+      },
+      "points": [
+        {
+          "id": "e95f73fa-74ee-4a8b-bee6-b9af8c5e00ec",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "id": "503c4e8a-e156-4a60-850c-6e6b12f36e3c",
+          "x": 1,
+          "y": 3
+        },
+        {
+          "id": "8f61d3eb-e1b0-40fa-a4ca-e01eaa708bc8",
+          "x": 2,
+          "y": 5
+        },
+        {
+          "id": "65c12fd0-149a-42cd-aa63-31869f0c531f",
+          "x": 3,
+          "y": 7
+        },
+        {
+          "id": "48b18ee4-2894-4cc3-a0fb-124df5a617e8",
+          "x": 4,
+          "y": 9
+        }
+      ]
+    }
+  ],
+  "series": [
+    {
+      "id": "9ef02d6c-266b-4b2e-b3ac-03aaae3c1453",
+      "datasetId": "f0bd3f85-7807-4262-8e51-20553ee9a4e5",
+      "name": "Эксперимент",
+      "visible": true,
+      "includeInAutoRange": true,
+      "order": 0,
+      "mode": "line-points",
+      "style": {
+        "stroke": "#476E98",
+        "strokeWidthPt": 1.6,
+        "opacity": 1,
+        "dash": "solid",
+        "markerShape": "circle",
+        "markerSizePt": 4,
+        "markerFill": "#FFFFFF",
+        "markerStroke": "#476E98",
+        "markerVisible": true
+      }
+    },
+    {
+      "id": "b82aa6be-76b9-4b99-9f1c-6f6dd9091026",
+      "datasetId": "38a9563a-59af-4415-97d6-959ce45c8a76",
+      "name": "Линейный тренд",
+      "visible": true,
+      "includeInAutoRange": true,
+      "order": 1,
+      "mode": "line",
+      "style": {
+        "stroke": "#222222",
+        "strokeWidthPt": 1.6,
+        "opacity": 1,
+        "dash": "dash",
+        "markerShape": "circle",
+        "markerSizePt": 4,
+        "markerFill": "#FFFFFF",
+        "markerStroke": "#476E98",
+        "markerVisible": false
+      }
+    }
+  ],
+  "objects": [
+    {
+      "id": "23fe2885-812e-44cb-bca6-8c1caf2eb8eb",
+      "type": "rectangle",
+      "name": "Интересующая область",
+      "anchors": [
+        {
+          "mode": "data",
+          "x": 1.2,
+          "y": 2.5
+        },
+        {
+          "mode": "data",
+          "x": 3.2,
+          "y": 8.5
+        }
+      ],
+      "geometry": {},
+      "text": [],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 1,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "6cbfffc9-0fe1-4dfd-96e6-a9a9435bccd2",
+      "type": "callout",
+      "name": "Подпись измерения",
+      "anchors": [
+        {
+          "mode": "point",
+          "datasetId": "f0bd3f85-7807-4262-8e51-20553ee9a4e5",
+          "pointId": "6fc8a825-bfbf-461e-865f-6ff160c0a587",
+          "fallbackX": 2,
+          "fallbackY": 5,
+          "offsetXpx": 0,
+          "offsetYpx": 0
+        },
+        {
+          "mode": "data",
+          "x": 3,
+          "y": 6.8
+        }
+      ],
+      "geometry": {},
+      "text": [
+        {
+          "text": "Контрольная точка",
+          "baseline": "normal",
+          "bold": false,
+          "italic": false
+        }
+      ],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 2,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "c1b072ed-aeb6-435c-8c36-33d7472d531f",
+      "type": "segment",
+      "name": "Аннотация segment",
+      "anchors": [
+        {
+          "mode": "data",
+          "x": 1,
+          "y": 1
+        },
+        {
+          "mode": "data",
+          "x": 4,
+          "y": 6
+        }
+      ],
+      "geometry": {},
+      "text": [],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 3,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "a585b083-ae18-47ab-8f24-a54c401b33f2",
+      "type": "line",
+      "name": "Аннотация line",
+      "anchors": [
+        {
+          "mode": "data",
+          "x": 2,
+          "y": 5
+        }
+      ],
+      "geometry": {
+        "directionX": 1,
+        "directionY": 0
+      },
+      "text": [],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 3,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "0aad260b-7f98-4698-b7f7-2465dce9e2cc",
+      "type": "arrow",
+      "name": "Аннотация arrow",
+      "anchors": [
+        {
+          "mode": "data",
+          "x": 3,
+          "y": 1
+        },
+        {
+          "mode": "data",
+          "x": 3,
+          "y": 6
+        }
+      ],
+      "geometry": {},
+      "text": [],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 3,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "5a050550-ed27-480d-980f-cdb1242f5a5c",
+      "type": "text",
+      "name": "Аннотация text",
+      "anchors": [
+        {
+          "mode": "page",
+          "pageX": 0.4,
+          "pageY": 0.08
+        }
+      ],
+      "geometry": {},
+      "text": [
+        {
+          "text": "Пример подписи",
+          "baseline": "normal",
+          "bold": false,
+          "italic": false
+        }
+      ],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 3,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "e392fa16-f4f2-4e6c-903c-8ee0845b5891",
+      "type": "marker",
+      "name": "Аннотация marker",
+      "anchors": [
+        {
+          "mode": "data",
+          "x": 3,
+          "y": 7
+        }
+      ],
+      "geometry": {},
+      "text": [],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 3,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "08d51098-1128-43ad-8852-37d0b7409bdd",
+      "type": "range-x",
+      "name": "Аннотация rangex",
+      "anchors": [
+        {
+          "mode": "data",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "mode": "data",
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "geometry": {},
+      "text": [],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 3,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "3030e84d-0c61-4d72-824f-e517158c3bdd",
+      "type": "range-y",
+      "name": "Аннотация rangey",
+      "anchors": [
+        {
+          "mode": "data",
+          "x": 0,
+          "y": 2
+        },
+        {
+          "mode": "data",
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "geometry": {},
+      "text": [],
+      "style": {
+        "stroke": "#2F3339",
+        "strokeWidthPt": 1,
+        "dash": "solid",
+        "strokeOpacity": 1,
+        "fill": "#6686AA",
+        "fillOpacity": 0.16,
+        "fontSizePt": 14,
+        "fontFamily": "Courier New",
+        "arrowHead": "end",
+        "markerShape": "circle",
+        "markerSizePt": 4
+      },
+      "zIndex": 3,
+      "visible": true,
+      "locked": false
+    }
+  ],
+  "calculations": [
+    {
+      "id": "ef9a41e1-0638-4392-8fca-dd8d8b62857a",
+      "kind": "linear-fit",
+      "sourceDatasetIds": [
+        "f0bd3f85-7807-4262-8e51-20553ee9a4e5"
+      ],
+      "resultDatasetId": "38a9563a-59af-4415-97d6-959ce45c8a76",
+      "parameters": {
+        "method": "qr",
+        "fitRange": [
+          0,
+          4
+        ]
+      },
+      "algorithmVersion": 1,
+      "status": "valid",
+      "summary": {
+        "slope": 2,
+        "intercept": 1,
+        "rSquared": 1
+      }
+    }
+  ],
+  "legend": {
+    "visible": true,
+    "anchor": {
+      "mode": "page",
+      "pageX": 0.8,
+      "pageY": 0.1
+    }
+  },
+  "viewport": {
+    "xMin": 0,
+    "xMax": 5,
+    "yMin": 0,
+    "yMax": 10
+  },
+  "editor": {
+    "selectedObjectId": null,
+    "showPointMarkers": true
+  },
+  "extensions": {}
+}

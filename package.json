@@ -1,0 +1,46 @@
+{
+  "name": "apio-graph",
+  "version": "1.0.0",
+  "license": "GPL-3.0-only",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "dev": "node scripts/generate-validator.mjs && vite --host 127.0.0.1 --port 1420 --strictPort",
+    "build": "node scripts/generate-validator.mjs && tsc --noEmit && vite build",
+    "typecheck": "node scripts/generate-validator.mjs && tsc --noEmit",
+    "lint": "eslint src tests --max-warnings=0",
+    "test": "node scripts/generate-validator.mjs && vitest run",
+    "test:e2e": "playwright test",
+    "tauri": "tauri",
+    "preview": "vite preview --host 127.0.0.1",
+    "check:repository": "node scripts/check-staged.mjs --all"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.4",
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
+    "d3-quadtree": "3.0.1",
+    "d3-scale": "4.0.2",
+    "d3-shape": "3.2.0",
+    "lucide-react": "1.59.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@tauri-apps/cli": "2.12.3",
+    "@types/d3-quadtree": "3.0.6",
+    "@types/d3-scale": "4.0.9",
+    "@types/d3-shape": "3.2.0",
+    "@types/node": "24.10.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "eslint": "10.13.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

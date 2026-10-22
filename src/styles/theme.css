@@ -1,0 +1,80 @@
+/* Editor themes include a contrasting default canvas; exports use document colors. */
+:root {
+  font-family: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  font-synthesis: none;
+  color-scheme: light;
+  --app-background: #F6F6F7;
+  --plot-paper: #FFFFFF;
+  --plot-ink: #000000;
+  --surface: #FFFFFF;
+  --field: #FAFAFB;
+  --text: #202024;
+  --muted: #62626B;
+  --line: #DEDEE3;
+  --field-border: #D5D5DC;
+  --hover: #ECECEF;
+  --selected: #E1ECF6;
+  --selected-text: #264E76;
+  --tab-active: #FFFFFF;
+  --tab-inactive: transparent;
+  --accent: #476E98;
+  --danger: #AF252C;
+  --danger-bg: #FFF1F1;
+  --warning: #78551B;
+  --warning-bg: #FFF8E8;
+  --primary: #303036;
+  --primary-text: #FFFFFF;
+  --glass: rgba(255,255,255,.82);
+  --glass-edge: rgba(255,255,255,.8);
+  --shadow: 0 8px 30px #00000012, 0 1px 4px #0000000A;
+  --panel-width: 380px;
+  --field-height: 40px;
+  --field-radius: 9px;
+  --label-size: 12.5px;
+  --value-size: 14px;
+  --caption-size: 12px;
+  --section-gap: 22px;
+  color: var(--text);
+  background: var(--app-background);
+}
+:root[data-theme=dark] {
+  color-scheme: dark;
+  --app-background: #000000; --plot-paper: #000000; --plot-ink: #FFFFFF;
+  --surface: #111111;
+  --field: #1C1C1E;
+  --text: #F5F5F5;
+  --muted: #A1A1AA;
+  --line: #303030;
+  --field-border: #424244;
+  --hover: #242424;
+  --selected: #253B50;
+  --selected-text: #D4E8FF;
+  --tab-active: #181818;
+  --tab-inactive: transparent;
+  --accent: #80B2DF;
+  --danger: #FF9B9B;
+  --danger-bg: #35181A;
+  --warning: #E7C485;
+  --warning-bg: #2C2518;
+  --primary: #E4E4E7;
+  --primary-text: #171719;
+  --glass: rgba(17,17,17,.86);
+  --glass-edge: rgba(255,255,255,.14);
+  --shadow: 0 8px 32px #00000050, 0 1px 4px #00000040;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme=system] {
+    color-scheme: dark;
+    --app-background: #000000; --plot-paper: #000000; --plot-ink: #FFFFFF; --surface: #111111; --field: #1C1C1E;
+    --text: #F5F5F5; --muted: #A1A1AA; --line: #303030; --field-border: #424244;
+    --hover: #242424; --selected: #253B50; --selected-text: #D4E8FF;
+    --tab-active: #181818; --tab-inactive: transparent; --accent: #80B2DF;
+    --danger: #FF9B9B; --danger-bg: #35181A; --warning: #E7C485; --warning-bg: #2C2518;
+    --primary: #E4E4E7; --primary-text: #171719;
+    --glass: rgba(17,17,17,.86); --glass-edge: rgba(255,255,255,.14);
+    --shadow: 0 8px 32px #00000050, 0 1px 4px #00000040;
+  }
+}
+:root[data-ui=large] { --value-size: 15px; --label-size: 13.5px; --caption-size: 12.5px; --field-height: 44px; }

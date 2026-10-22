@@ -1,0 +1,1 @@
+MPL-2.0 standard license text, also shipped by the cssparser 0.37.0 dependency. selectors 0.38.0 declares MPL-2.0 in its Cargo.toml and source headers; its published crate omits the complete license text. Upstream: https://github.com/servo/stylo/tree/572ecba2d1600e7c3d490586692a209faf703baa/selectors . Original MPL: https://www.mozilla.org/MPL/2.0/ .

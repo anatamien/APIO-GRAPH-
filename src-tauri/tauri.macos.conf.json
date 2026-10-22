@@ -1,0 +1,20 @@
+{
+  "app": {
+    "windows": [{
+      "label": "main",
+      "title": "APIO GRAPH",
+      "width": 600,
+      "height": 420,
+      "minWidth": 520,
+      "minHeight": 360,
+      "visible": false,
+      "resizable": false,
+      "maximizable": false,
+      "decorations": true,
+      "titleBarStyle": "Overlay",
+      "hiddenTitle": true,
+      "trafficLightPosition": {"x": 14, "y": 18},
+      "dragDropEnabled": true
+    }]
+  }
+}

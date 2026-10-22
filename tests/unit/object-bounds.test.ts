@@ -1,0 +1,11 @@
+import {it,expect} from 'vitest';
+import {addPairs,createProject,makeObject,type Anchor} from '../../src/domain/model';
+import {anchorPixel,createCoordinates} from '../../src/domain/geometry';
+import {bindAnchorPoint} from '../../src/domain/anchorTransforms';
+import {objectBounds,returnObjectToCanvas} from '../../src/domain/objectBounds';
+
+it('return-to-canvas keeps anchor modes, point links, label contents and source data',()=>{
+ const p=addPairs(createProject(),[{x:1,y:2}],'Raw'),c=createCoordinates(p,1200,800),tip=bindAnchorPoint(p,{mode:'data',x:300,y:300},p.datasets[0].id,p.datasets[0].points[0].id,c,true),o=makeObject('callout',[tip,{mode:'data',x:302,y:301}],'Outside H₂O'),before=JSON.stringify(p),next=returnObjectToCanvas(p,o,c,850),bounds=objectBounds(p,next,c);expect(bounds.right).toBeLessThanOrEqual(833);expect(bounds.bottom).toBeLessThanOrEqual(783);expect(next.text).toEqual(o.text);expect(next.anchors.map(a=>a.mode)).toEqual(['point','data']);expect(next.anchors[0]).toMatchObject({datasetId:p.datasets[0].id,pointId:p.datasets[0].points[0].id});expect(JSON.stringify(p)).toBe(before);const a=anchorPixel(p,o.anchors[0],c),b=anchorPixel(p,o.anchors[1],c),na=anchorPixel(p,next.anchors[0],c),nb=anchorPixel(p,next.anchors[1],c);expect(na.x-a.x).toBeCloseTo(nb.x-b.x,7);expect(na.y-a.y).toBeCloseTo(nb.y-b.y,7);expect(returnObjectToCanvas(p,{...o,locked:true},c)).toEqual({...o,locked:true});
+});
+it('page return remains in the existing normalized .aph coordinate range',()=>{const p=createProject(),c=createCoordinates(p,1200,800),a:Anchor={mode:'page',pageX:.99,pageY:.99},o=makeObject('text',[a],'Page label'),next=returnObjectToCanvas(p,o,c,850);expect(next.anchors[0]).toMatchObject({mode:'page'});if(next.anchors[0].mode==='page'){expect(next.anchors[0].pageX).toBeGreaterThanOrEqual(0);expect(next.anchors[0].pageX).toBeLessThanOrEqual(1)}expect(objectBounds(p,next,c).right).toBeLessThanOrEqual(833)});
+it('can return an offscreen infinite line without changing its direction',()=>{const p=createProject(),c=createCoordinates(p,1200,800),o=makeObject('line',[{mode:'data',x:5,y:1e6}]),next=returnObjectToCanvas(p,o,c);const pixel=anchorPixel(p,next.anchors[0],c);expect(pixel.y).toBeGreaterThan(c.top);expect(pixel.y).toBeLessThan(c.bottom);expect(next.geometry).toEqual(o.geometry)});

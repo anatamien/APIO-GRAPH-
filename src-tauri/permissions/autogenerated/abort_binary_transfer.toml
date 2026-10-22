@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-abort-binary-transfer"
+description = "Enables the abort_binary_transfer command without any pre-configured scope."
+commands.allow = ["abort_binary_transfer"]
+
+[[permission]]
+identifier = "deny-abort-binary-transfer"
+description = "Denies the abort_binary_transfer command without any pre-configured scope."
+commands.deny = ["abort_binary_transfer"]

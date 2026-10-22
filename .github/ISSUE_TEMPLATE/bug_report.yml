@@ -1,0 +1,35 @@
+name: Bug report / Ошибка
+description: Report a reproducible problem without uploading private scientific data.
+title: "[Bug] "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Application version
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows version, display scaling, refresh rate, theme and language.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Minimal example or screenshot
+      description: Use synthetic or anonymised data. Do not attach private projects or credentials.
