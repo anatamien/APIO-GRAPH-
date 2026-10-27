@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-origin-recovery-write"
+description = "Enables the origin_recovery_write command without any pre-configured scope."
+commands.allow = ["origin_recovery_write"]
+
+[[permission]]
+identifier = "deny-origin-recovery-write"
+description = "Denies the origin_recovery_write command without any pre-configured scope."
+commands.deny = ["origin_recovery_write"]

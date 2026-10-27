@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-origin-cancel"
+description = "Enables the origin_cancel command without any pre-configured scope."
+commands.allow = ["origin_cancel"]
+
+[[permission]]
+identifier = "deny-origin-cancel"
+description = "Denies the origin_cancel command without any pre-configured scope."
+commands.deny = ["origin_cancel"]

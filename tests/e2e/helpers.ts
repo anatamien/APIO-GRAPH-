@@ -11,3 +11,5 @@ export async function selectSeries(page:Page,id:string){
  const selector=page.getByLabel('Текущая серия',{exact:true});if(await selector.count())await selector.selectOption(id);
  const markers=page.locator('.marker-settings');if(await markers.count()&&!await markers.evaluate(e=>e.hasAttribute('open')))await markers.locator(':scope > summary').click();
 }
+
+export async function workspaceRecoveryPresent(page:Page){return page.evaluate(()=>new Promise<boolean>((resolve,reject)=>{const open=indexedDB.open('apio-workspace-recovery',1);open.onupgradeneeded=()=>open.result.createObjectStore('recovery');open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,q=db.transaction('recovery').objectStore('recovery').get('current');q.onsuccess=()=>{resolve(!!q.result);db.close()};q.onerror=()=>{db.close();reject(q.error)}}}))}

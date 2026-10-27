@@ -1,9 +1,10 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {addPairs,createProject} from '../../src/domain/model';
 import {createCoordinates} from '../../src/domain/geometry';
 import {readFile} from 'node:fs/promises';
 
-async function save(page:Page){const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return JSON.parse(await readFile((await(await pending).path())!,'utf8'))}
+async function save(page:Page){const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return await downloadedGraph(await readFile((await(await pending).path())!))}
 
 test('panning translates prepared series without rebuilding their paths or markers',async({page})=>{
  await page.goto('/');const p=addPairs(createProject(),Array.from({length:1000},(_,i)=>({x:i,y:Math.sin(i/20)})),'source');p.viewport={xMin:400,xMax:410,yMin:-2,yMax:2};p.legend.visible=false;p.series[0].mode='line-points';p.series[0].style.markerVisible=true;

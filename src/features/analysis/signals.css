@@ -1,0 +1,28 @@
+.signal-analysis-panel .panel-body{gap:12px}
+.signal-parameters{display:flex;flex-direction:column;gap:12px;min-width:0}
+.signal-return{border:1px solid var(--line);font-size:var(--caption-size);justify-content:center}
+.signal-source{margin:0;font-size:var(--value-size);overflow-wrap:anywhere}
+.signal-analysis-panel textarea{min-height:76px}
+.signal-analysis-panel .analysis-note{font-size:var(--caption-size);margin:0}
+.signal-analysis-panel .analysis-actions{margin:2px 0;flex-wrap:wrap}
+.signal-analysis-panel .analysis-error{border-color:var(--danger);background:var(--danger-bg);font-size:var(--caption-size);margin:0}
+.signal-preview{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.signal-nodes{display:flex;flex-direction:column;gap:6px}
+.signal-node-head,.signal-node-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 28px;gap:6px;align-items:center}
+.signal-node-head{font-size:var(--caption-size);color:var(--muted);padding-right:10px}
+.signal-node-scroll{max-height:160px;overflow:auto;overscroll-behavior:contain}
+.signal-node-row{height:52px;padding-right:4px}
+.signal-node-row .field>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.signal-node-row button{padding:3px;min-width:28px;min-height:28px;color:var(--muted)}
+.signal-nodes>button{border:1px solid var(--line);font-size:var(--caption-size)}
+.peak-results{border-top:1px solid var(--line);padding-top:14px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.peak-results h3{font-size:var(--value-size);font-weight:600;margin:0}
+.peak-commands{display:flex;flex-wrap:wrap;gap:4px}
+.peak-commands button{font-size:var(--caption-size);padding:5px 7px;min-height:30px;border:1px solid var(--line)}
+.peak-table-scroll{max-height:230px;min-height:64px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--line);border-radius:9px;outline-offset:-2px}
+.peak-table-scroll table{width:max-content;min-width:100%;font-size:var(--caption-size)}
+.peak-table-scroll th,.peak-table-scroll td{height:32px;padding:4px 8px;white-space:nowrap}
+.peak-table-scroll tbody tr{cursor:pointer}
+.peak-table-scroll tr[aria-selected=true]{background:var(--hover);color:var(--text)}
+.peak-table-scroll tr[aria-hidden=true] td{padding:0;border:0;height:inherit}
+.signal-preview .analysis-summary{grid-template-columns:minmax(0,1fr) minmax(0,max-content);padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--field);margin:0;font-size:var(--caption-size)}

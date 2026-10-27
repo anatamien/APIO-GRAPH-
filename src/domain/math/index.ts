@@ -1,4 +1,4 @@
-import { MathError, OUTPUT_LIMIT, aggregateDuplicates, extent, finite, interpolate, mean, median, midpoint, normalization, ordered, rSquared, readRange, selectRange, sum, validateInput, validateResult, type CalculationResult, type Parameters, type Range, type XY } from './core';
+import { MathError, OUTPUT_LIMIT, aggregateDuplicates, extent, finite, interpolate, mean, median, normalization, ordered, rSquared, readRange, selectRange, sum, trapezoidIntegral, validateInput, validateResult, type CalculationResult, type Parameters, type Range, type XY } from './core';
 import { fitPolynomial } from './regression';
 export { MathError, type XY, type CalculationResult } from './core';
 export { fitPolynomial, type PolynomialFit } from './regression';
@@ -84,9 +84,7 @@ function integrate(points: readonly XY[], parameters: Parameters): CalculationRe
     ...selected.filter(p => p.x > range[0] && p.x < range[1]),
     { x: range[1], y: interpolate(selected, range[1]) },
   ];
-  const areas: number[] = [];
-  for (let i = 1; i < clipped.length; i++) areas.push(finite((clipped[i].x - clipped[i - 1].x) * midpoint(clipped[i].y, clipped[i - 1].y)));
-  return { points: clipped, summary: { integral: finite(sum(areas)), n: clipped.length, startX: range[0], endX: range[1], method: 'signed-trapezoids-linear-boundaries' } };
+  return { points: clipped, summary: { integral: trapezoidIntegral(clipped), n: clipped.length, startX: range[0], endX: range[1], method: 'signed-trapezoids-linear-boundaries' } };
 }
 
 function grid(range: Range, step: unknown): number[] {

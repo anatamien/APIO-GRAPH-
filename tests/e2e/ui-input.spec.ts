@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {selectSeries} from './helpers';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
@@ -6,7 +7,7 @@ import {createProject,addPairs,makeObject,type ProjectDocument} from '../../src/
 async function open(page:Page,p=addPairs(createProject(),[{x:2,y:2},{x:6,y:6}],'Measurements')){
  p.series=p.series.map(s=>({...s,mode:'line-points',style:{...s.style,markerVisible:true}}));p.legend.visible=false;await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'input.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await expect(page.getByTestId('chart')).toBeVisible();return p;
 }
-async function save(page:Page):Promise<ProjectDocument>{const download=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return JSON.parse(await readFile((await(await download).path())!,'utf8'))}
+async function save(page:Page):Promise<ProjectDocument>{const download=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return await downloadedGraph(await readFile((await(await download).path())!))}
 
 for(const lang of ['ru','en'] as const)test(`startup language persists; file and paste stay in the launcher until Plot (${lang})`,async({page})=>{
  await page.setViewportSize({width:600,height:720});await page.goto('/');await page.getByRole('combobox',{name:'Язык',exact:true}).selectOption(lang);await page.reload();

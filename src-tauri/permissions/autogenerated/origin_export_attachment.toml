@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-origin-export-attachment"
+description = "Enables the origin_export_attachment command without any pre-configured scope."
+commands.allow = ["origin_export_attachment"]
+
+[[permission]]
+identifier = "deny-origin-export-attachment"
+description = "Denies the origin_export_attachment command without any pre-configured scope."
+commands.deny = ["origin_export_attachment"]

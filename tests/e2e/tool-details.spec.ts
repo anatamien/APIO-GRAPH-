@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
 import { addPairs, createProject, makeObject, type ProjectDocument } from '../../src/domain/model'
@@ -18,7 +19,7 @@ async function saved(page: Page): Promise<ProjectDocument> {
   const pending = page.waitForEvent('download')
   await page.locator('header').getByRole('button', { name: 'Сохранить', exact: true }).click()
   const download = await pending
-  return JSON.parse(await readFile((await download.path())!, 'utf8')) as ProjectDocument
+  return await downloadedGraph(await readFile((await download.path())!)) as ProjectDocument
 }
 
 async function location(page: Page, x: number, y: number) {

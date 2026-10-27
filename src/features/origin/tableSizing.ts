@@ -1,0 +1,5 @@
+import {useLayoutEffect,useState,type RefObject} from 'react';
+export function useNumericCharacterWidth(ref:RefObject<HTMLDivElement|null>,revision:number){
+ const [width,setWidth]=useState(8.2);
+ useLayoutEffect(()=>{const host=ref.current;if(!host)return;let alive=true;const measure=()=>{if(!alive)return;const cell=host.querySelector('td');if(!cell)return;const style=getComputedStyle(cell),context=document.createElement('canvas').getContext('2d');if(!context)return;context.font=`${style.fontSize} ${style.fontFamily}`;const next=Math.max(...[...'0123456789−e+.'].map(char=>context.measureText(char).width));setWidth(old=>Math.abs(old-next)>.05?next:old)};measure();void document.fonts.ready.then(measure);const resize=new ResizeObserver(measure);resize.observe(host);const style=new MutationObserver(measure),app=host.closest('.app');if(app)style.observe(app,{attributes:true,attributeFilter:['class','style']});return()=>{alive=false;resize.disconnect();style.disconnect()}},[ref,revision]);return width;
+}

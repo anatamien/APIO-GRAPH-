@@ -12,6 +12,7 @@ use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
+#[cfg(test)]
 fn raw_bytes(body: &InvokeBody) -> Result<Cow<'_, [u8]>, String> {
     raw_bytes_limit(body, MAX_FILE_BYTES)
 }
@@ -79,6 +80,8 @@ fn image_extension(value: Option<&str>) -> Result<String, String> {
 #[derive(Default)]
 pub struct FileAccess {
     projects: Mutex<HashSet<PathBuf>>,
+    origin_reads: Mutex<HashSet<PathBuf>>,
+    workspace_reads: Mutex<HashSet<PathBuf>>,
     pub pending: Mutex<VecDeque<PathBuf>>,
     pub dropped: Mutex<HashSet<PathBuf>>,
     upload: Mutex<Option<BinaryUpload>>,
@@ -92,8 +95,24 @@ struct BinaryUpload {
 }
 
 impl FileAccess {
+    pub(crate) fn origin_granted(&self, path: &Path) -> Result<PathBuf, String> {
+        let canonical = path.canonicalize().map_err(storage::file_error)?;
+        if !self
+            .origin_reads
+            .lock()
+            .map_err(storage::file_error)?
+            .contains(&canonical)
+        {
+            return Err("FILE_NOT_GRANTED".into());
+        }
+        Ok(canonical)
+    }
+    #[cfg(test)]
     fn begin_upload(&self, length: usize) -> Result<u64, String> {
-        if length as u64 > MAX_FILE_BYTES {
+        self.begin_upload_limit(length, MAX_FILE_BYTES)
+    }
+    fn begin_upload_limit(&self, length: usize, limit: u64) -> Result<u64, String> {
+        if length as u64 > limit {
             return Err("FILE_TOO_LARGE".into());
         }
         let mut upload = self.upload.lock().map_err(storage::file_error)?;
@@ -144,7 +163,7 @@ impl FileAccess {
         }
         Ok(())
     }
-    fn grant(&self, path: &Path) -> Result<(), String> {
+    pub(crate) fn grant(&self, path: &Path) -> Result<(), String> {
         if storage::project_path(path) {
             self.projects.lock().map_err(storage::file_error)?.insert(
                 storage::canonical_destination(path).unwrap_or_else(|_| path.to_path_buf()),
@@ -153,7 +172,7 @@ impl FileAccess {
         Ok(())
     }
 
-    fn granted(&self, path: &Path) -> Result<PathBuf, String> {
+    pub(crate) fn granted(&self, path: &Path) -> Result<PathBuf, String> {
         let canonical = storage::canonical_destination(path).map_err(storage::file_error)?;
         if !storage::project_path(&canonical)
             || !self
@@ -200,22 +219,38 @@ fn request_bytes<'a>(
     request: &'a Request<'_>,
     access: &FileAccess,
 ) -> Result<Cow<'a, [u8]>, String> {
+    request_bytes_limit(request, access, MAX_FILE_BYTES)
+}
+fn request_bytes_limit<'a>(
+    request: &'a Request<'_>,
+    access: &FileAccess,
+    limit: u64,
+) -> Result<Cow<'a, [u8]>, String> {
     if request.headers().contains_key("x-apio-transfer") {
         raw_bytes_limit(request.body(), 0)?;
-        return access
-            .take_upload(request_number(request, "x-apio-transfer")?)
-            .map(Cow::Owned);
+        let bytes = access.take_upload(request_number(request, "x-apio-transfer")?)?;
+        if bytes.len() as u64 > limit {
+            return Err("FILE_TOO_LARGE".into());
+        }
+        return Ok(Cow::Owned(bytes));
     }
-    raw_bytes(request.body())
+    raw_bytes_limit(request.body(), limit)
 }
 #[tauri::command]
 pub async fn begin_binary_transfer(
     window: WebviewWindow,
     access: State<'_, FileAccess>,
     length: usize,
+    kind: Option<String>,
 ) -> Result<u64, String> {
     main_window(&window)?;
-    access.begin_upload(length)
+    let limit = match kind.as_deref() {
+        None => MAX_FILE_BYTES,
+        Some("workspace") => crate::workspace::MAX_BYTES,
+        Some("workspace-recovery") => crate::workspace::MAX_BYTES + 1024 * 1024 + 12,
+        _ => return Err("FILE_INVALID_TRANSFER".into()),
+    };
+    access.begin_upload_limit(length, limit)
 }
 #[tauri::command]
 pub async fn append_binary_transfer(
@@ -246,6 +281,8 @@ pub struct OpenedFile {
     name: String,
     path: String,
     bytes: Vec<u8>,
+    origin: bool,
+    workspace_size: Option<u64>,
 }
 
 /// Metadata is one UTF-8 JSON line; the remaining bytes are the exact file body.
@@ -253,8 +290,10 @@ fn opened_response(file: Option<OpenedFile>) -> Result<Response, String> {
     let Some(file) = file else {
         return Ok(Response::new(Vec::<u8>::new()));
     };
-    let mut bytes = serde_json::to_vec(&serde_json::json!({"name":file.name,"path":file.path}))
-        .map_err(storage::file_error)?;
+    let mut bytes = serde_json::to_vec(
+        &serde_json::json!({"name":file.name,"path":file.path,"origin":file.origin,"workspaceSize":file.workspace_size}),
+    )
+    .map_err(storage::file_error)?;
     bytes.push(b'\n');
     bytes.extend_from_slice(&file.bytes);
     Ok(Response::new(bytes))
@@ -270,8 +309,48 @@ fn main_window(window: &WebviewWindow) -> Result<(), String> {
 
 fn read_selected(path: &Path, access: &FileAccess) -> Result<OpenedFile, String> {
     let path = path.canonicalize().map_err(storage::file_error)?;
-    let bytes = storage::bounded_read(&path, MAX_FILE_BYTES).map_err(storage::file_error)?;
+    let mut probe = std::fs::File::open(&path).map_err(storage::file_error)?;
+    let workspace = storage::project_path(&path) && crate::workspace::is_workspace(&path)?;
+    let length = probe.metadata().map_err(storage::file_error)?.len();
+    if length
+        > if workspace {
+            crate::workspace::MAX_BYTES
+        } else {
+            MAX_FILE_BYTES
+        }
+    {
+        return Err("FILE_TOO_LARGE".into());
+    }
+    let mut magic = [0; 4];
+    let _ = std::io::Read::read(&mut probe, &mut magic).map_err(storage::file_error)?;
+    let extension = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let origin = !workspace
+        && (["opj", "opju", "org"].contains(&extension.as_str())
+            || (extension == "aph" && magic == *b"PK\x03\x04"));
+    let bytes = if origin || workspace {
+        Vec::new()
+    } else {
+        storage::bounded_read(&path, MAX_FILE_BYTES).map_err(storage::file_error)?
+    };
     access.grant(&path)?;
+    if workspace {
+        access
+            .workspace_reads
+            .lock()
+            .map_err(storage::file_error)?
+            .insert(path.clone());
+    }
+    if origin {
+        access
+            .origin_reads
+            .lock()
+            .map_err(storage::file_error)?
+            .insert(path.clone());
+    }
     Ok(OpenedFile {
         name: path
             .file_name()
@@ -280,6 +359,8 @@ fn read_selected(path: &Path, access: &FileAccess) -> Result<OpenedFile, String>
             .to_string(),
         path: path.to_string_lossy().to_string(),
         bytes,
+        origin,
+        workspace_size: workspace.then_some(length),
     })
 }
 
@@ -294,7 +375,7 @@ pub async fn open_file(
     let extensions: &[&str] = match kind.as_deref() {
         Some("project") => &["aph"],
         Some("data") => &["txt", "csv", "tsv"],
-        _ => &["aph", "txt", "csv", "tsv"],
+        _ => &["aph", "txt", "csv", "tsv", "opj", "opju", "org"],
     };
     let selected = app
         .dialog()
@@ -345,8 +426,24 @@ pub async fn save_project(
     request: Request<'_>,
 ) -> Result<Option<String>, String> {
     main_window(&window)?;
-    let text = project_text(request_bytes(&request, &access)?)?;
-    storage::validate_project_text(&text)?;
+    let workspace = request
+        .headers()
+        .get("x-apio-workspace")
+        .is_some_and(|v| v == "1");
+    let bytes = request_bytes_limit(
+        &request,
+        &access,
+        if workspace {
+            crate::workspace::MAX_BYTES
+        } else {
+            MAX_FILE_BYTES
+        },
+    )?;
+    if workspace {
+        crate::workspace::validate(&bytes)?
+    } else {
+        storage::validate_project_text(&project_text(Cow::Borrowed(&bytes))?)?;
+    }
     let path = request_path(&request)?;
     let save_as = match request
         .headers()
@@ -384,7 +481,7 @@ pub async fn save_project(
         }
         storage::canonical_destination(&path).map_err(storage::file_error)?
     };
-    storage::atomic_write(&destination, text.as_bytes()).map_err(storage::file_error)?;
+    storage::atomic_write(&destination, &bytes).map_err(storage::file_error)?;
     access.grant(&destination)?;
     Ok(Some(destination.to_string_lossy().to_string()))
 }
@@ -396,20 +493,61 @@ pub async fn save_image(
     access: State<'_, FileAccess>,
     request: Request<'_>,
 ) -> Result<Option<String>, String> {
+    save_export(app, window, access, request, false).await
+}
+
+#[tauri::command]
+pub async fn save_data_table(
+    app: AppHandle,
+    window: WebviewWindow,
+    access: State<'_, FileAccess>,
+    request: Request<'_>,
+) -> Result<Option<String>, String> {
+    save_export(app, window, access, request, true).await
+}
+
+fn table_extension(requested: Option<&str>) -> Result<String, String> {
+    match requested {
+        Some("csv") => Ok("csv".into()),
+        Some("tsv") => Ok("tsv".into()),
+        _ => Err("EXPORT_UNSUPPORTED_FORMAT".into()),
+    }
+}
+
+async fn save_export(
+    app: AppHandle,
+    window: WebviewWindow,
+    access: State<'_, FileAccess>,
+    request: Request<'_>,
+    table: bool,
+) -> Result<Option<String>, String> {
     main_window(&window)?;
-    let extension = image_extension(
-        request
-            .headers()
-            .get("x-apio-extension")
-            .and_then(|v| v.to_str().ok()),
-    )?;
+    let requested = request
+        .headers()
+        .get("x-apio-extension")
+        .and_then(|v| v.to_str().ok());
+    let extension = if table {
+        table_extension(requested)?
+    } else {
+        image_extension(requested)?
+    };
     let bytes = request_bytes(&request, &access)?;
     let selected = app
         .dialog()
         .file()
         .set_parent(&window)
-        .add_filter("Chart image", &[extension.as_str()])
-        .set_file_name(format!("chart.{extension}"))
+        .add_filter(
+            if table {
+                "Peak characteristics"
+            } else {
+                "Chart image"
+            },
+            &[extension.as_str()],
+        )
+        .set_file_name(format!(
+            "{}.{extension}",
+            if table { "peaks" } else { "chart" }
+        ))
         .blocking_save_file();
     let Some(selected) = selected else {
         return Ok(None);
@@ -478,6 +616,32 @@ pub async fn clear_recovery(app: AppHandle, window: WebviewWindow) -> Result<(),
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn selected_origin_is_readable_but_cannot_be_overwritten_as_a_project() {
+        let directory = tempfile::tempdir().unwrap();
+        let selected = directory.path().join("selected.opj");
+        let other = directory.path().join("other.opj");
+        std::fs::write(&selected, b"CPYA4").unwrap();
+        std::fs::write(&other, b"CPYA4").unwrap();
+        let access = FileAccess::default();
+        assert_eq!(
+            access.origin_granted(&selected),
+            Err("FILE_NOT_GRANTED".into())
+        );
+        let opened = read_selected(&selected, &access).unwrap();
+        assert!(opened.origin && opened.bytes.is_empty());
+        assert_eq!(
+            access.origin_granted(&selected).unwrap(),
+            selected.canonicalize().unwrap()
+        );
+        assert_eq!(
+            access.origin_granted(&other),
+            Err("FILE_NOT_GRANTED".into())
+        );
+        assert_eq!(access.granted(&selected), Err("FILE_NOT_GRANTED".into()));
+        assert!(!access.known_project(&selected).unwrap());
+        assert_eq!(std::fs::read(&selected).unwrap(), b"CPYA4");
+    }
     #[test]
     fn bounded_upload_roundtrip_preserves_every_byte() {
         let access = FileAccess::default();
@@ -560,6 +724,8 @@ mod tests {
             name: "Δ\nfile.csv".into(),
             path: "C:/данные/Δ.csv".into(),
             bytes: vec![10, 0, 128, 255],
+            origin: false,
+            workspace_size: None,
         }))
         .unwrap();
         let InvokeResponseBody::Raw(bytes) = response.body().unwrap() else {
@@ -609,6 +775,17 @@ mod tests {
         assert!(image_extension(None).is_err());
     }
     #[test]
+    fn table_headers_allow_only_csv_and_tsv_without_paths() {
+        assert_eq!(table_extension(Some("csv")), Ok("csv".into()));
+        assert_eq!(table_extension(Some("tsv")), Ok("tsv".into()));
+        for extension in [None, Some("../csv"), Some("exe"), Some("svg"), Some(".csv")] {
+            assert_eq!(
+                table_extension(extension),
+                Err("EXPORT_UNSUPPORTED_FORMAT".into())
+            );
+        }
+    }
+    #[test]
     fn project_save_requires_a_granted_path_and_rejects_data_files() {
         let directory = tempfile::tempdir().unwrap();
         let project = directory.path().join("project.aph");
@@ -656,4 +833,148 @@ mod tests {
             Err("FILE_NOT_GRANTED".into())
         );
     }
+}
+
+#[tauri::command]
+pub async fn workspace_chunk(
+    window: WebviewWindow,
+    access: State<'_, FileAccess>,
+    path: String,
+    offset: u64,
+    count: usize,
+) -> Result<Response, String> {
+    main_window(&window)?;
+    let canonical = Path::new(&path)
+        .canonicalize()
+        .map_err(storage::file_error)?;
+    if !access
+        .workspace_reads
+        .lock()
+        .map_err(storage::file_error)?
+        .contains(&canonical)
+    {
+        return Err("FILE_NOT_GRANTED".into());
+    }
+    crate::workspace::read_chunk(&canonical, offset, count).map(Response::new)
+}
+
+#[tauri::command]
+pub async fn workspace_recovery(
+    app: AppHandle,
+    window: WebviewWindow,
+    access: State<'_, FileAccess>,
+    request: Request<'_>,
+) -> Result<Response, String> {
+    main_window(&window)?;
+    let directory = app.path().app_data_dir().map_err(storage::file_error)?;
+    let path = directory.join("workspace-recovery.bin");
+    let action = request
+        .headers()
+        .get("x-apio-action")
+        .and_then(|v| v.to_str().ok())
+        .ok_or("RECOVERY_INVALID")?;
+    match action {
+        "write" => {
+            let bytes = request_bytes_limit(
+                &request,
+                &access,
+                crate::workspace::MAX_BYTES + 1024 * 1024 + 12,
+            )?;
+            if bytes.len() < 12 || &bytes[..8] != b"APIOREC1" {
+                return Err("RECOVERY_INVALID".into());
+            }
+            let size = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) as usize;
+            if size > 1024 * 1024 || 12 + size > bytes.len() {
+                return Err("RECOVERY_INVALID".into());
+            }
+            let metadata: serde_json::Value =
+                serde_json::from_slice(&bytes[12..12 + size]).map_err(|_| "RECOVERY_INVALID")?;
+            if metadata["format"] != "APIO_WORKSPACE_RECOVERY" || metadata["version"] != 1 {
+                return Err("RECOVERY_INVALID".into());
+            }
+            crate::workspace::validate(&bytes[12 + size..])?;
+            std::fs::create_dir_all(&directory).map_err(storage::file_error)?;
+            storage::atomic_write(&path, &bytes).map_err(storage::file_error)?;
+            Ok(Response::new(Vec::<u8>::new()))
+        }
+        "size" => {
+            let length = if path.exists() {
+                std::fs::metadata(path).map_err(storage::file_error)?.len()
+            } else {
+                0
+            };
+            if length > crate::workspace::MAX_BYTES + 1024 * 1024 + 12 {
+                return Err("FILE_TOO_LARGE".into());
+            }
+            Ok(Response::new(length.to_le_bytes().to_vec()))
+        }
+        "read" => {
+            let offset = request_number(&request, "x-apio-offset")?;
+            let count = usize::try_from(request_number(&request, "x-apio-count")?)
+                .map_err(|_| "FILE_INVALID_RANGE")?;
+            if count > 1024 * 1024 {
+                return Err("FILE_TOO_LARGE".into());
+            }
+            let mut file = std::fs::File::open(path).map_err(storage::file_error)?;
+            use std::io::{Read, Seek, SeekFrom};
+            let length = file.metadata().map_err(storage::file_error)?.len();
+            if length > crate::workspace::MAX_BYTES + 1024 * 1024 + 12
+                || offset > length
+                || count as u64 > length - offset
+            {
+                return Err("FILE_INVALID_RANGE".into());
+            }
+            file.seek(SeekFrom::Start(offset))
+                .map_err(storage::file_error)?;
+            let mut bytes = vec![0; count];
+            file.read_exact(&mut bytes).map_err(storage::file_error)?;
+            Ok(Response::new(bytes))
+        }
+        "clear" => {
+            match std::fs::remove_file(path) {
+                Ok(()) => (),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+                Err(e) => return Err(storage::file_error(e)),
+            }
+            Ok(Response::new(Vec::<u8>::new()))
+        }
+        _ => Err("RECOVERY_INVALID".into()),
+    }
+}
+
+#[tauri::command]
+pub async fn save_passive_bytes(
+    app: AppHandle,
+    window: WebviewWindow,
+    access: State<'_, FileAccess>,
+    request: Request<'_>,
+) -> Result<Option<String>, String> {
+    main_window(&window)?;
+    let bytes = request_bytes(&request, &access)?;
+    let extension = request
+        .headers()
+        .get("x-apio-extension")
+        .and_then(|v| v.to_str().ok())
+        .ok_or("EXPORT_UNSUPPORTED_FORMAT")?;
+    if !["bin", "opj", "opju", "org", "png", "jpg", "gif", "bmp", "pdf", "txt"].contains(&extension) {
+        return Err("EXPORT_UNSUPPORTED_FORMAT".into());
+    }
+    let filename = format!("Origin-source.{extension}");
+    let chosen = app
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .add_filter("Origin passive bytes", &[extension])
+        .set_file_name(&filename)
+        .blocking_save_file();
+    let Some(file) = chosen else { return Ok(None) };
+    let path = file.into_path().map_err(storage::file_error)?;
+    if !path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case(extension))
+    {
+        return Err("EXPORT_EXTENSION_REQUIRED".into());
+    }
+    storage::atomic_write(&path, &bytes).map_err(storage::file_error)?;
+    Ok(Some(path.to_string_lossy().into_owned()))
 }

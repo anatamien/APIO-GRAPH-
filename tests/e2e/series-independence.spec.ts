@@ -1,10 +1,11 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {addPairs,createProject,type ProjectDocument} from '../../src/domain/model';
 import {addCalculation,calculatePreview} from '../../src/features/analysis/operations';
 import {autoRange} from '../../src/domain/geometry';
 const header=(p:Page,name:string)=>p.locator('header').getByRole('button',{name,exact:true});
-async function save(page:Page):Promise<ProjectDocument>{const pending=page.waitForEvent('download');await header(page,'Сохранить').click();return JSON.parse(await readFile((await(await pending).path())!,'utf8'))}
+async function save(page:Page):Promise<ProjectDocument>{const pending=page.waitForEvent('download');await header(page,'Сохранить').click();return await downloadedGraph(await readFile((await(await pending).path())!))}
 function fixture(){
  let p=addPairs(createProject(),Array.from({length:31},(_,x)=>({x,y:Math.sin(x/4)*10+20})),'A');
  const smoothed=calculatePreview('moving-average',p.datasets[0].points,{window:5});

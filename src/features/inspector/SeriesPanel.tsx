@@ -5,15 +5,17 @@ import type {ProjectDocument,Series,Dash,Marker} from '../../domain/model';
 import {effectiveMarkers,setSeriesMode,setSeriesPoints} from '../../domain/seriesDisplay';
 import {ColorPicker} from './ColorPicker';
 import {addTranslations} from '../../app/i18n';
+import {removeDataNode} from '../../domain/dependencies';
 addTranslations({graphProperties:['Свойства графика','Graph properties'],currentSeries:['Текущая серия','Current series'],displayGroup:['Отображение','Display'],lineGroup:['Линия','Line'],markerGroup:['Маркеры','Markers'],advancedGroup:['Дополнительные свойства','Advanced properties'],modeLine:['Линия','Line'],modePoints:['Точки','Points'],modeBoth:['Оба','Both'],showPoints:['Показывать точки','Show points']});
 addTranslations({chooseSeries:['Выберите серию','Choose a series'],seriesUnavailable:['Результат недоступен:','Result unavailable:'],seriesOutdated:['нужен перерасчёт','recalculation required'],seriesInvalid:['ошибка расчёта','calculation error'],seriesColorHint:['Цвет линии и контура маркеров. Заливка настраивается ниже.','Line and marker outline color. Set the fill below.']});
-export function SeriesPanel({project:p,t,onSelect,onClose,onChange,selectedId,onObjects}:{project:ProjectDocument;t:T;onSelect:(id:string)=>void;onClose:()=>void;onChange:(label:string,fn:(p:ProjectDocument)=>ProjectDocument)=>void;selectedId?:string;onObjects?:()=>void}){
+export function SeriesPanel({project:p,t,onSelect,onClose,onChange,selectedId,onObjects,onDataResults}:{project:ProjectDocument;t:T;onSelect:(id:string)=>void;onClose:()=>void;onChange:(label:string,fn:(p:ProjectDocument)=>ProjectDocument)=>void;selectedId?:string;onObjects?:()=>void;onDataResults?:()=>void}){
  const s=p.series.find(s=>s.id===selectedId);
  useEffect(()=>{if(selectedId===undefined&&p.series[0])onSelect(p.series[0].id)},[selectedId,p.series,onSelect]);
  const update=(patch:Partial<Series>)=>{if(s)onChange('SetSeriesStyle',q=>({...q,series:q.series.map(a=>a.id===s.id?{...a,...patch}:a)}))};
  const markers=!!s&&effectiveMarkers(p,s);
  const calculation=p.calculations.find(calc=>calc.resultDatasetId===s?.datasetId);
  return <Panel title={t('graphProperties')} className="inspector graph-properties" t={t} onClose={onClose}>
+  {onDataResults&&<button className="object-list-button" onClick={onDataResults}>{t('data.results')}</button>}
   {onObjects&&<button className="object-list-button" aria-label={t('graphObjects')} onClick={onObjects}><Shapes size={17}/>{t('graphObjects')} ({p.objects.length})</button>}
   {p.series.length>0&&<Select label={t('currentSeries')} value={s?.id??''} items={[...(!s?[["",t('chooseSeries')] as [string,string]]:[]),...p.series.map(s=>[s.id,s.name+(s.visible?'':` · ${t('hiddenSeries')}`)] as [string,string])]} onChange={onSelect}/>}
   {s?<>
@@ -43,7 +45,7 @@ export function SeriesPanel({project:p,t,onSelect,onClose,onChange,selectedId,on
     <Field label={t('name')}><input aria-label={t('name')} value={s.name} onChange={e=>update({name:e.target.value})}/></Field>
     <Check label={t('includeAuto')} value={s.includeInAutoRange} onChange={includeInAutoRange=>update({includeInAutoRange})}/>
     <NumberField label={t('order')} value={s.order} min={0} step={1} onChange={order=>update({order:Math.floor(order)})}/>
-    <button className="danger" onClick={()=>onChange('RemoveSeries',q=>({...q,series:q.series.filter(a=>a.id!==s.id)}))}>{t('delete')}</button>
+    <button className="danger" onClick={()=>onChange('RemoveSeries',q=>removeDataNode(q,`series:${s.id}`,true))}>{t('delete')}</button>
    </section>
    </Fragment>
   </>:<p className="muted">{t('emptyHint')}</p>}

@@ -2,11 +2,11 @@ import type {DrawObject,XY} from './model';
 export interface TextBounds {x:number;y:number;width:number;height:number}
 interface Run {text:string;x:number;y:number;size:number;bold:boolean;italic:boolean}
 const cache=new WeakMap<DrawObject,{runs:Run[];bounds:TextBounds}>();
-let context:CanvasRenderingContext2D|null|undefined;
+let context:CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D|null|undefined;
 /** The renderer uses these same explicit run positions in screen and standalone SVG. */
 export function layoutText(o:DrawObject){
  const cached=cache.get(o);if(cached)return cached;
- if(context===undefined&&typeof document!=='undefined')context=document.createElement('canvas').getContext('2d');
+ if(context===undefined){if(typeof document!=='undefined')context=document.createElement('canvas').getContext('2d');else if(typeof OffscreenCanvas!=='undefined')context=new OffscreenCanvas(1,1).getContext('2d')}
  const font=o.style.fontSizePt*4/3,runs:Run[]=[];let x=0,lineY=0,left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
  for(const part of o.text)for(const [index,text] of part.text.split('\n').entries()){
   if(index){x=0;lineY+=font*1.25}

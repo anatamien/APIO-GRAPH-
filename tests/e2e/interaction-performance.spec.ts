@@ -1,9 +1,10 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {createProject,addPairs} from '../../src/domain/model';
 import {readFile} from 'node:fs/promises';
 
 async function open(page:Page){await page.goto('/');const p=addPairs(createProject(),[{x:2,y:2},{x:8,y:8}],'source');p.legend.visible=false;await page.locator('input[type=file]').setInputFiles({name:'gesture.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await expect(page.getByTestId('chart')).toBeVisible();return p}
-async function save(page:Page){const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return JSON.parse(await readFile((await(await pending).path())!,'utf8'))}
+async function save(page:Page){const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return await downloadedGraph(await readFile((await(await pending).path())!))}
 
 test('unchanged hover skips the core scene and navigation keeps one wheel subscription',async({page})=>{
  await page.addInitScript(()=>{
@@ -30,22 +31,26 @@ test('pan commits the actual release coordinates even without a final move event
  await page.mouse.move(b.x+400,b.y+200);await page.mouse.down({button:'middle'});await page.mouse.move(b.x+410,b.y+200);
  await page.getByTestId('chart').evaluate((el,{x,y})=>el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1,button:1,clientX:x,clientY:y})),{x:b.x+500,y:b.y+200});
  await page.mouse.up({button:'middle'});const changed=await save(page);
- const plot=await page.locator('#plot-clip rect').evaluate(el=>Number(el.getAttribute('width')));
+ const plot=await page.locator('[data-plot-clip] rect').evaluate(el=>Number(el.getAttribute('width')));
  expect(changed.viewport.xMin).toBeCloseTo(p.viewport.xMin-100/plot*10,6);expect(changed.datasets).toEqual(p.datasets);await expect(page.locator('header').getByRole('button',{name:'Отменить',exact:true})).toBeDisabled();
+});
+
+test('pan and wheel reuse root coordinates; resizing invalidates the transform and source points stay exact',async({page})=>{
+ const p=await open(page),chart=page.getByTestId('chart');await chart.evaluate(el=>{const svg=el as SVGSVGElement&{transformReads:number};const original=svg.getScreenCTM.bind(svg);svg.transformReads=0;svg.getScreenCTM=()=>{svg.transformReads++;return original()}});let b=(await chart.boundingBox())!;await page.mouse.move(b.x+400,b.y+200);await page.mouse.down({button:'middle'});for(let i=0;i<30;i++)await page.mouse.move(b.x+400+i,b.y+200+i/2);await page.mouse.up({button:'middle'});for(let i=0;i<8;i++)await page.mouse.wheel(0,i%2?40:-40);const before=await chart.evaluate(el=>(el as SVGSVGElement&{transformReads:number}).transformReads);expect(before).toBeLessThan(5);await page.setViewportSize({width:1100,height:780});b=(await chart.boundingBox())!;await page.mouse.move(b.x+300,b.y+160);await page.mouse.wheel(0,-40);await expect.poll(()=>chart.evaluate(el=>(el as SVGSVGElement&{transformReads:number}).transformReads)).toBeGreaterThan(before);expect((await save(page)).datasets).toEqual(p.datasets);
 });
 test('captured pan continues beyond the chart boundary and cancellation restores its start',async({page})=>{
  const p=await open(page),b=(await page.getByTestId('chart').boundingBox())!;
  await page.mouse.move(b.x+400,b.y+200);await page.mouse.down({button:'middle'});await page.mouse.move(b.x+430,b.y+200);
  await page.mouse.move(b.x+430,b.y-10);await page.mouse.move(b.x+490,b.y-10);await page.mouse.up({button:'middle'});
  const changed=await save(page);expect(changed.viewport.yMin).not.toBe(p.viewport.yMin);
- const plot=await page.locator('#plot-clip rect').evaluate(el=>Number(el.getAttribute('width')));expect(changed.viewport.xMin).toBeCloseTo(-90/plot*10,6);
+ const plot=await page.locator('[data-plot-clip] rect').evaluate(el=>Number(el.getAttribute('width')));expect(changed.viewport.xMin).toBeCloseTo(-90/plot*10,6);
  await page.mouse.move(b.x+400,b.y+200);await page.mouse.down({button:'middle'});await page.mouse.move(b.x+500,b.y+220);await page.keyboard.press('Escape');await page.mouse.up({button:'middle'});expect((await save(page)).viewport).toEqual(changed.viewport);
 });
 test('axis number formatting updates the coordinate margins and series together',async({page})=>{
  await open(page);await page.locator('[data-axis-label="y"]').click();const inspector=page.locator('.inspector');
- const before=await page.locator('#plot-clip rect').getAttribute('x');
+ const before=await page.locator('[data-plot-clip] rect').getAttribute('x');
  await inspector.getByLabel('Формат чисел',{exact:true}).selectOption('fixed');await inspector.getByLabel('Знаки после запятой',{exact:true}).fill('12');
- await expect.poll(()=>page.locator('#plot-clip rect').getAttribute('x')).not.toBe(before);
+ await expect.poll(()=>page.locator('[data-plot-clip] rect').getAttribute('x')).not.toBe(before);
 });
 test('dragging a panel reads its dimensions once instead of on every pointer event',async({page})=>{
  await open(page);await page.locator('header').getByRole('button',{name:'Настройки',exact:true}).click();

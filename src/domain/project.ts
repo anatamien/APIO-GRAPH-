@@ -1,5 +1,8 @@
+import {validateTable} from './diagramTable';
+import {validateAreas,syncArea} from './plotAreas';
 import check from './generated/aphValidator.js';
 import type { ProjectDocument, Anchor,Point } from './model';
+import {PROJECT_SCHEMA_VERSION} from './model';
 import {pointIndex,assertAxisRange} from './geometry';
 export interface Validation { errors: string[]; warnings: string[] }
 const validatedProjects=new WeakSet<ProjectDocument>();
@@ -7,7 +10,7 @@ const validatedProjects=new WeakSet<ProjectDocument>();
 export function navigateProject(previous:ProjectDocument,viewport:ProjectDocument['viewport']):ProjectDocument|undefined{
  if(!Object.values(viewport).every(Number.isFinite)||viewport.xMin>=viewport.xMax||viewport.yMin>=viewport.yMax)return;
  try{assertAxisRange(previous.axes.x,viewport.xMin,viewport.xMax);assertAxisRange(previous.axes.y,viewport.yMin,viewport.yMax)}catch{return}
- const next={...previous,viewport};if(validatedProjects.has(previous))validatedProjects.add(next);return next;
+ const next=syncArea({...previous,viewport});if(validatedProjects.has(previous))validatedProjects.add(next);return next;
 }
 /** Only internal immutable edits may reuse previously checked measurement branches. */
 export function validateEdit(previous:ProjectDocument,next:ProjectDocument):Validation{return validateDocument(next,validatedProjects.has(previous)?previous:undefined)}
@@ -16,7 +19,10 @@ function validateDocument(input: unknown,previous?:ProjectDocument): Validation 
   const errors:string[]=[],warnings:string[]=[];
   const unchanged=new Set<Point[]>(previous?.datasets.map(d=>d.points));
   const candidate=input as ProjectDocument;
-  const schemaInput=previous&&candidate&&Array.isArray(candidate.datasets)?{...candidate,datasets:candidate.datasets.map(d=>{
+  const schemaInput=previous&&candidate&&Array.isArray(candidate.datasets)?{...candidate,calculations:Array.isArray(candidate.calculations)?candidate.calculations.map(c=>{
+   const old=previous.calculations.find(before=>before.id===c?.id),peaks=c?.data?.peaks;
+   return peaks&&peaks===old?.data?.peaks&&peaks.length<=1000000?{...c,data:{...c.data,peaks:[]}}:c;
+  }):candidate.calculations,datasets:candidate.datasets.map(d=>{
    if(d&&unchanged.has(d.points))return {...d,points:[]};
    const old=previous.datasets.find(before=>before.id===d?.id);
    // Keep the schema's one-million-point limit effective before filtering.
@@ -42,12 +48,25 @@ function validateDocument(input: unknown,previous?:ProjectDocument): Validation 
   }
   if(!(p.viewport.xMin<p.viewport.xMax&&p.viewport.yMin<p.viewport.yMax))errors.push('/viewport: INVALID_RANGE');
   const anchor=(a:Anchor,path:string)=>{if(a.mode==='point'){const points=ds.get(a.datasetId)?.points;if(!points||!pointIndex(points).has(a.pointId))warnings.push(`${path}: MISSING_POINT`)}};
-  for(const o of p.objects){const count=['text','line','marker'].includes(o.type)?1:2;if(o.anchors.length!==count)errors.push(`/objects/${o.id}/anchors: INVALID_COUNT`);if(o.type==='line'&&(!Number.isFinite(o.geometry.directionX)||!Number.isFinite(o.geometry.directionY)||Math.hypot(o.geometry.directionX??0,o.geometry.directionY??0)===0))errors.push(`/objects/${o.id}/geometry: INVALID_DIRECTION`);o.anchors.forEach((a,i)=>anchor(a,`/objects/${o.id}/anchors/${i}`))}
+  for(const o of p.objects){if(o.type==='table'){if(!p.schemaVersion.startsWith('1.2.'))errors.push('TABLE_NEWER_SCHEMA');if(o.table)errors.push(...validateTable(o.table))}const count=['text','line','marker','table'].includes(o.type)?1:2;if(o.anchors.length!==count)errors.push(`/objects/${o.id}/anchors: INVALID_COUNT`);if(o.type==='line'&&(!Number.isFinite(o.geometry.directionX)||!Number.isFinite(o.geometry.directionY)||Math.hypot(o.geometry.directionX??0,o.geometry.directionY??0)===0))errors.push(`/objects/${o.id}/geometry: INVALID_DIRECTION`);o.anchors.forEach((a,i)=>anchor(a,`/objects/${o.id}/anchors/${i}`))}
   anchor(p.legend.anchor,'/legend/anchor');
   const visited=new Set<string>(),active=new Set<string>();
   const visit=(did:string)=>{if(active.has(did)){errors.push(`/datasets/${did}: CYCLIC_CALCULATION`);return}if(visited.has(did))return;visited.add(did);active.add(did);const d=ds.get(did),c=d?.source.calculationId?cs.get(d.source.calculationId):undefined;if(c)for(const source of c.sourceDatasetIds)visit(source);active.delete(did)};
   const results=new Set<string>();
   for(const c of p.calculations){
+    if(c.kind==='area'&&c.parameters.baselineDatasetId!==undefined&&(typeof c.parameters.baselineDatasetId!=='string'||!c.sourceDatasetIds.includes(c.parameters.baselineDatasetId)))errors.push(`/calculations/${c.id}: MISSING_BASELINE_DEPENDENCY`);
+    if((c.kind==='area'||c.kind==='peaks')&&c.resultDatasetId)errors.push(`/calculations/${c.id}: SCALAR_RESULT_DATASET`);
+    if(c.kind==='peaks'&&c.status==='valid'&&!c.data?.peaks)errors.push(`/calculations/${c.id}: MISSING_PEAK_RESULTS`);
+    if(c.kind==='peaks'&&c.status==='valid'&&c.data?.peaks&&c.summary.peakCount!==c.data.peaks.length)errors.push(`/calculations/${c.id}: INVALID_PEAK_COUNT`);
+    if(c.kind==='area'&&c.status==='valid'&&(typeof c.summary.integral!=='number'||typeof c.summary.startX!=='number'||typeof c.summary.endX!=='number'||!(c.summary.startX<c.summary.endX)))errors.push(`/calculations/${c.id}: INVALID_AREA_RESULT`);
+    if(c.kind==='baseline'&&!c.resultDatasetId)errors.push(`/calculations/${c.id}: MISSING_BASELINE_RESULT`);
+    const nodes=c.kind==='baseline'?c.parameters.nodes:undefined;
+    if(nodes!==undefined&&(!Array.isArray(nodes)||nodes.length>10000||nodes.some(a=>!a||typeof a!=='object'||!Number.isFinite(a.x)||!Number.isFinite(a.y))))errors.push(`/calculations/${c.id}: INVALID_BASELINE_NODES`);
+    const old=previous?.calculations.find(before=>before.id===c.id);
+    if(c.data?.peaks&&c.data.peaks!==old?.data?.peaks)for(const peak of c.data.peaks){
+      if(peak.width!==null&&(peak.left===null||peak.right===null||peak.left>peak.x||peak.right<peak.x||Math.abs((peak.right-peak.left)-peak.width)>Math.max(1e-10,peak.width*1e-10)))errors.push(`/calculations/${c.id}: INVALID_PEAK_WIDTH`);
+      if(peak.incomplete&&(peak.width!==null||peak.prominence!==null))errors.push(`/calculations/${c.id}: INVALID_INCOMPLETE_PEAK`);
+    }
     for(const did of c.sourceDatasetIds)if(!ds.has(did))errors.push(`/calculations/${c.id}: MISSING_SOURCE`);
     if(c.status==='valid'&&c.sourceDatasetIds.some(did=>{const producer=ds.get(did)?.source.calculationId;return producer&&cs.get(producer)?.status!=='valid'}))errors.push(`/calculations/${c.id}: STALE_DEPENDENCY`);
     if(new Set(c.sourceDatasetIds).size!==c.sourceDatasetIds.length)errors.push(`/calculations/${c.id}: DUPLICATE_SOURCE`);
@@ -71,6 +90,7 @@ function validateDocument(input: unknown,previous?:ProjectDocument): Validation 
    }
   };
   finite(p.extensions,'/extensions',1,previous?.extensions);for(const c of p.calculations){const old=previous?.calculations.find(before=>before.id===c.id);finite(c.parameters,`/calculations/${c.id}/parameters`,3,old?.parameters);finite(c.summary,`/calculations/${c.id}/summary`,3,old?.summary)}
+  errors.push(...validateAreas(p));
   if(!errors.length)validatedProjects.add(p);else validatedProjects.delete(p);return {errors,warnings};
 }
 export function serialize(p: ProjectDocument,pretty=true): string {
@@ -84,5 +104,11 @@ export function serialize(p: ProjectDocument,pretty=true): string {
 export function deserialize(text: string): {project: ProjectDocument; warnings: string[]} {
   if(new TextEncoder().encode(text).length>200*1024*1024)throw new Error('FILE_TOO_LARGE');
   const raw:unknown=JSON.parse(text.replace(/^\uFEFF/,'')); const v=validateProject(raw);
-  if(v.errors.length)throw new Error(v.errors.join('\n'));return {project:raw as ProjectDocument,warnings:v.warnings};
+  if(v.errors.length)throw new Error(v.errors.join('\n'));
+  // A metadata-only migration keeps every source coordinate, ID and style.
+  const p=raw as ProjectDocument,project=p.schemaVersion.startsWith('1.0.')?{...p,schemaVersion:PROJECT_SCHEMA_VERSION}:p;
+  // Both schemas have identical legacy branches. Metadata-only migration must
+  // preserve validation reuse, including the first edit of a million-point file.
+  if(project!==p)validatedProjects.add(project);
+  return {project,warnings:v.warnings};
 }

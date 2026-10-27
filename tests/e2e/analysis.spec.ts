@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {enterEditor} from './helpers';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Locator, type Page } from '@playwright/test';
@@ -24,7 +25,7 @@ async function savedFile(page: Page) {
   const download = await pending;
   const path = await download.path();
   expect(path).toBeTruthy();
-  return { path: path!, project: JSON.parse(await readFile(path!, 'utf8')) as ProjectDocument };
+  return { path: path!, project: await downloadedGraph(await readFile(path!)) as ProjectDocument };
 }
 const saved = async (page: Page) => (await savedFile(page)).project;
 const summaryValue = (panel: Locator, label: string) => panel.locator('dt').filter({ hasText: new RegExp(`^${label}$`) }).first().locator('..').locator('dd');

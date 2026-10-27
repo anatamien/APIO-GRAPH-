@@ -1,5 +1,5 @@
 export interface XY { x: number; y: number }
-export interface CalculationResult { points: XY[]; summary: Record<string, number | string | null> }
+export interface CalculationResult { points: XY[]; summary: Record<string, number | string | null>; data?:import('../signalTypes').ScientificData; companion?:XY[];plot?:{baseline?:XY[];corrected?:XY[]} }
 export type Parameters = Record<string, unknown>;
 export type Range = readonly [number, number];
 export const OUTPUT_LIMIT = 1_000_000;
@@ -62,6 +62,12 @@ export function sum(values: Iterable<number>): number {
     result = next;
   }
   return result + compensation;
+}
+
+/** Signed piecewise-linear integral with compensated accumulation. */
+export function trapezoidIntegral(points:readonly XY[]):number{
+ function* terms(){for(let i=1;i<points.length;i++)yield finite((points[i].x-points[i-1].x)*midpoint(points[i].y,points[i-1].y))}
+ return finite(sum(terms()));
 }
 
 export function extent(values: readonly number[]): Range {
@@ -144,10 +150,17 @@ export function interpolate(points: readonly XY[], x: number, extrapolate = fals
   }
   const a = points[low];
   const b = points[high];
+  return interpolateSegment(a,b,x);
+}
+
+/** Endpoint differences can overflow even when all coordinates and the answer
+ * are finite. Scale X only in that case, retaining local precision otherwise. */
+export function interpolateSegment(a:XY,b:XY,x:number):number{
   if (x === a.x) return a.y;
   if (x === b.x) return b.y;
   if (a.y === b.y) return a.y;
-  const ratio = (x - a.x) / (b.x - a.x);
+  const delta=b.x-a.x;
+  const ratio = Number.isFinite(delta)?(x-a.x)/delta:(x/2-a.x/2)/(b.x/2-a.x/2);
   return finite((1 - ratio) * a.y + ratio * b.y);
 }
 

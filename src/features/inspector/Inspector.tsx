@@ -1,3 +1,4 @@
+import {DiagramTableEditor} from './DiagramTableEditor';
 import {useState} from 'react';
 import type {ProjectDocument,Axis,DrawObject,Dash,Marker} from '../../domain/model';
 import {axisTicks,textRotation,autoRange} from '../../domain/geometry';
@@ -19,6 +20,8 @@ export function Inspector({project:p,selection,onChange,t,onClose}:InspectorProp
  const setObject=(patch:Partial<DrawObject>)=>onChange('EditObject',q=>({...q,objects:q.objects.map(a=>a.id===id?{...a,...patch}:a)}));
  const a=p.axes[axis];
  if(kind==='series')return <SeriesPanel project={p} selectedId={id} onSelect={()=>{}} onChange={onChange} t={t} onClose={onClose}/>;
+ if(kind==='object'&&o?.type==='table'&&o.table)return <Panel title={t('diagramTable')} t={t} onClose={onClose} className="inspector table-inspector"><DiagramTableEditor key={o.id} object={o} project={p} onChange={next=>setObject(next)} t={t} appearance={<><ColorPicker label={t('stroke')} value={o.style.stroke} onChange={stroke=>setObject({style:{...o.style,stroke}})} t={t}/><NumberField label={t('strokeWidth')} value={o.style.strokeWidthPt} min={.1} max={24} onChange={strokeWidthPt=>setObject({style:{...o.style,strokeWidthPt}})}/><Select label={t('dash')} value={o.style.dash} items={dashItems(t)} onChange={dash=>setObject({style:{...o.style,dash:dash as Dash}})}/><NumberField label={t('fontSize')} value={o.style.fontSizePt} min={6} max={72} onChange={fontSizePt=>setObject({style:{...o.style,fontSizePt}})}/></>} placement={<><Field label={t('name')}><input value={o.name} onChange={e=>setObject({name:e.target.value})}/></Field><AnchorEditor p={p} anchor={o.anchors[0]} label={t('anchorPosition')} t={t} onChange={anchor=>setObject({anchors:[anchor]})}/><NumberField label={t('zIndex')} value={o.zIndex} step={1} onChange={zIndex=>setObject({zIndex:Math.floor(zIndex)})}/><Check label={t('locked')} value={o.locked} onChange={locked=>setObject({locked})}/><Check label={t('visible')} value={o.visible} onChange={visible=>setObject({visible})}/><button className="danger" onClick={()=>{onChange('RemoveObject',q=>({...q,objects:q.objects.filter(a=>a.id!==id)}));onClose()}}>{t('delete')}</button></>}/></Panel>;
+
  return <Panel title={kind==='axis'?`${t('label')} ${axis.toUpperCase()}`:kind==='series'?s?.name??'':o?t(o.type):t('legend')} t={t} onClose={onClose} className="inspector">
  {error&&<p className="error" role="alert">{error}</p>}
  {kind==='legend'&&<><Check label={t('showLegend')} value={p.legend.visible} onChange={visible=>onChange('Legend',q=>({...q,legend:{...q.legend,visible}}))}/><AnchorEditor p={p} anchor={p.legend.anchor} label={t('legend')} t={t} onChange={anchor=>onChange('Legend',q=>({...q,legend:{...q.legend,anchor}}))}/></>}
@@ -40,6 +43,7 @@ export function Inspector({project:p,selection,onChange,t,onClose}:InspectorProp
  {kind==='object'&&o&&<>
   <Field label={t('name')}><input value={o.name} onChange={e=>setObject({name:e.target.value})}/></Field>
   {o.anchors.map((anchor,i)=><AnchorEditor key={i} p={p} anchor={anchor} label={t(o.type==='callout'?(i===0?'anchorTip':'anchorLabel'):o.anchors.length===1?'anchorPosition':i===0?'anchorStart':'anchorEnd')} t={t} onChange={next=>setObject({anchors:o.anchors.map((a,j)=>i===j?next:a)})}/>)}
+  {o.type==='table'&&o.table&&<DiagramTableEditor key={o.id} object={o} project={p} onChange={next=>setObject(next)} t={t}/>}
   {['text','callout'].includes(o.type)&&<>
    <TextEditor parts={objectText} onChange={text=>setObject({text})} t={t}/>
    <NumberField label={t('fontSize')} step={1} value={o.style.fontSizePt} min={6} max={72} onChange={fontSizePt=>setObject({style:{...o.style,fontSizePt}})}/>

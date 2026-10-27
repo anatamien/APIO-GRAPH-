@@ -1,12 +1,12 @@
 import {useState} from 'react';
-import {Eye,EyeOff,LockKeyhole,LockKeyholeOpen,LocateFixed,Type,MessageSquare,ArrowUpRight,RectangleHorizontal,Minus,MoveUpRight,Dot} from 'lucide-react';
+import {Eye,EyeOff,LockKeyhole,LockKeyholeOpen,LocateFixed,Table2,Type,MessageSquare,ArrowUpRight,RectangleHorizontal,Minus,MoveUpRight,Dot} from 'lucide-react';
 import type {ProjectDocument,DrawObject} from '../../domain/model';
 import {Panel,type T} from '../../app/controls';
 import {createCoordinates} from '../../domain/geometry';
 import {returnObjectToCanvas} from '../../domain/objectBounds';
 import {addTranslations} from '../../app/i18n';
 addTranslations({graphObjects:['Объекты графика','Graph objects'],hiddenObjects:['Скрыто','Hidden'],objectProperties:['Свойства','Properties'],hideObject:['Скрыть','Hide'],showObject:['Показать','Show'],lockObject:['Заблокировать','Lock'],unlockObject:['Разблокировать','Unlock'],returnObject:['Вернуть на холст','Return to canvas'],noObjects:['Дополнительных объектов пока нет. Добавьте текст, выноску или фигуру инструментами.','No additional objects yet. Add text, a callout or a shape using the tools.']});
-const icons={text:Type,callout:MessageSquare,arrow:ArrowUpRight,rectangle:RectangleHorizontal,segment:Minus,line:MoveUpRight,marker:Dot,'range-x':RectangleHorizontal,'range-y':RectangleHorizontal};
+const icons={table:Table2,text:Type,callout:MessageSquare,arrow:ArrowUpRight,rectangle:RectangleHorizontal,segment:Minus,line:MoveUpRight,marker:Dot,'range-x':RectangleHorizontal,'range-y':RectangleHorizontal};
 export function ObjectPanel({project:p,t,onClose,onSelect,onChange}:{project:ProjectDocument;t:T;onClose:()=>void;onSelect:(id:string)=>void;onChange:(label:string,fn:(p:ProjectDocument)=>ProjectDocument)=>void}){
  const [scroll,setScroll]=useState(0),rowHeight=72,start=Math.max(0,Math.floor(scroll/rowHeight)-3),end=Math.min(p.objects.length,start+24),hidden=p.objects.filter(o=>!o.visible).length;
  const names=new Map<string,number>();for(const o of p.objects){const name=o.name||t(o.type);names.set(name,(names.get(name)??0)+1)}

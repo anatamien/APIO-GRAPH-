@@ -1,3 +1,4 @@
+import {analysisPreferences} from '../settings/toolPreferences';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Field, NumberField, Panel, Select } from '../../app/controls';
 import { addTranslations } from '../../app/i18n';
@@ -5,19 +6,24 @@ import { makeObject, type CalculationKind, type Point, type ProjectDocument, typ
 import { MathError, type CalculationResult } from '../../domain/math';
 import { addCalculation } from './operations';
 import { AnalysisWorkerClient } from './workerClient';
+import {dependencyIndex,seriesByDataset} from '../../domain/dependencies';
+import {applyCalculationPatches,calculationInputsUnchanged,replaceCalculation} from './recalculation';
 import { analysisTranslations } from './errors';
 import './analysis.css';
+import {SignalAnalysisPanel} from './SignalAnalysisPanel';
+import {isSignalKind} from './signalOperations';
+import type {SignalInteractionStore} from './signalInteraction';
 
 addTranslations(analysisTranslations);
-export interface AnalysisPanelProps { project: ProjectDocument; onChange: (label: string, transform: (p: ProjectDocument) => ProjectDocument) => void; t: (key: string) => string; onClose: () => void }
+export interface AnalysisPanelProps { project: ProjectDocument; onChange: (label: string, transform: (p: ProjectDocument) => ProjectDocument) => void; t: (key: string) => string; onClose: () => void; sourceSeriesId?:string;calculationId?:string;onDataResults?:()=>void;interaction?:SignalInteractionStore;onRevealPeak?:(point:XY)=>void;onSourcePicked?:(id:string)=>void }
 
-const operations: CalculationKind[] = ['linear-fit', 'polynomial-fit', 'exponential-fit', 'power-fit', 'savitzky-golay', 'moving-average', 'derivative', 'integral', 'interpolation', 'statistics'];
+export const analysisOperations: CalculationKind[] = ['linear-fit', 'polynomial-fit', 'exponential-fit', 'power-fit', 'savitzky-golay', 'moving-average', 'derivative', 'integral', 'interpolation', 'statistics','baseline','peaks','area'];
 const isFit = (kind: string) => kind.endsWith('-fit');
 const number = (value: number) => Number(value.toPrecision(6)).toString();
-const labels: Record<string, string> = { n: 'mathN', degree: 'degree', window: 'window', minX: 'mathMinX', maxX: 'mathMaxX', minY: 'mathMinY', maxY: 'mathMaxY', meanY: 'mathMeanY', medianY: 'mathMedianY', stdDevY: 'mathStdDevY', sumY: 'mathSumY', rangeX: 'mathRangeX', rangeY: 'mathRangeY', pearsonR: 'mathPearsonR', integral: 'integral', startX: 'rangeMin', endX: 'rangeMax' };
+const labels: Record<string, string> = { peakCount:'signal.peakCount',incompleteCount:'signal.incompleteCount',excludedFilters:'signal.excludedFilters',excludedUndefined:'signal.excludedUndefined',relativeHeight:'signal.relativeHeight',absoluteIntegral:'signal.absoluteIntegral',backgroundCount:'signal.backgroundCount',relativeChange:'signal.relativeChange',iterations:'signal.usedIterations', n: 'mathN', degree: 'degree', window: 'window', minX: 'mathMinX', maxX: 'mathMaxX', minY: 'mathMinY', maxY: 'mathMaxY', meanY: 'mathMeanY', medianY: 'mathMedianY', stdDevY: 'mathStdDevY', sumY: 'mathSumY', rangeX: 'mathRangeX', rangeY: 'mathRangeY', pearsonR: 'mathPearsonR', integral: 'integral', startX: 'rangeMin', endX: 'rangeMax' };
 const coefficient = /^(a|b|A|B|c[0-9]+)$/;
 
-function Summary({ summary, t }: { summary: Record<string, unknown>; t: AnalysisPanelProps['t'] }) {
+export function Summary({ summary, t }: { summary: Record<string, unknown>; t: AnalysisPanelProps['t'] }) {
   return <>
     <dl className="analysis-summary">{Object.entries(summary).filter(([key]) => labels[key] || key === 'rSquared' || coefficient.test(key)).map(([key, value]) => <div key={key} style={{ display: 'contents' }}><dt>{key === 'rSquared' ? 'R²' : labels[key] ? t(labels[key]) : key}</dt><dd>{value === null ? t('undefined') : typeof value === 'number' ? number(value) : String(value)}</dd></div>)}</dl>
     {typeof summary.rSquaredReason === 'string' && <p className="analysis-note">{t(summary.rSquaredReason)}</p>}
@@ -68,34 +74,43 @@ function PreviewPlot({ source, points, t }: { source: readonly XY[]; points: rea
 
 interface Preview { result: CalculationResult; kind: CalculationKind; parameters: Record<string, unknown>; sourceSeriesId: string; sourceDatasetId: string; sourcePoints: Point[] }
 
-export function AnalysisPanel({ project, onChange, t, onClose }: AnalysisPanelProps) {
-  const [kind, setKind] = useState<CalculationKind>('linear-fit');
-  const [sourceId, setSourceId] = useState(project.series[0]?.id ?? '');
-  const [windowSize, setWindowSize] = useState(9), [polyDegree, setPolyDegree] = useState(2), [sgDegree, setSgDegree] = useState(3);
-  const [sortCopy, setSortCopy] = useState(false), [duplicates, setDuplicates] = useState('default');
-  const [selection, setSelection] = useState('all'), [minText, setMinText] = useState(''), [maxText, setMaxText] = useState('');
-  const [rowFrom, setRowFrom] = useState('1'), [rowTo, setRowTo] = useState('');
-  const [stepText, setStepText] = useState(''), [xText, setXText] = useState(''), [extrapolate, setExtrapolate] = useState(false);
+export function AnalysisPanel(props:AnalysisPanelProps){
+ const [operation,setOperation]=useState<CalculationKind>(()=>props.project.calculations.find(c=>c.id===props.calculationId)?.kind??'linear-fit');
+ const [source,setSource]=useState(props.sourceSeriesId);
+ return isSignalKind(operation)?<SignalAnalysisPanel key={operation} {...props} sourceSeriesId={source} onSourcePicked={setSource} operation={operation} onOperation={setOperation}/>:<LegacyAnalysisPanel key={operation} {...props} sourceSeriesId={source} onSourcePicked={setSource} operation={operation} onOperation={setOperation}/>;
+}
+function LegacyAnalysisPanel({ project, onChange, t, onClose,sourceSeriesId,calculationId,onDataResults,operation,onOperation,onSourcePicked }: AnalysisPanelProps&{operation:CalculationKind;onOperation:(kind:CalculationKind)=>void}) {
+  const editing=project.calculations.find(c=>c.id===calculationId),initialDataset=project.datasets.find(d=>d.id===(project.series.find(s=>s.id===sourceSeriesId)?.datasetId??sourceSeriesId?.replace(/^dataset:/,'')))??project.datasets[0],saved=editing?.parameters??analysisPreferences(operation,initialDataset?.points.length),initialRange=saved.fitRange??saved.range;
+  const originalSource=Array.isArray(saved.sourceSeriesIds)?project.series.find(s=>saved.sourceSeriesIds instanceof Array&&saved.sourceSeriesIds.includes(s.id)&&s.datasetId===editing?.sourceDatasetIds[0]):undefined;
+  const kind=editing?.kind??operation;
+  const [sourceId, setSourceId] = useState(sourceSeriesId??(editing?originalSource?.id??seriesByDataset(project.series).get(editing.sourceDatasetIds[0])?.[0]?.id??`dataset:${editing.sourceDatasetIds[0]}`:project.series[0]?.id)??'');
+  const [windowSize, setWindowSize] = useState(Number(saved.window??9)), [polyDegree, setPolyDegree] = useState(Number(saved.degree??2)), [sgDegree, setSgDegree] = useState(Number(saved.degree??3));
+  const [sortCopy, setSortCopy] = useState(saved.sortCopy===true), [duplicates, setDuplicates] = useState(String(saved.duplicates??'default'));
+  const [selection, setSelection] = useState(saved.rowRange?'rows':initialRange?'x':'all'), [minText, setMinText] = useState(Array.isArray(initialRange)?String(initialRange[0]):''), [maxText, setMaxText] = useState(Array.isArray(initialRange)?String(initialRange[1]):'');
+  const [rowFrom, setRowFrom] = useState(Array.isArray(saved.rowRange)?String(saved.rowRange[0]):'1'), [rowTo, setRowTo] = useState(Array.isArray(saved.rowRange)?String(saved.rowRange[1]):'');
+  const [stepText, setStepText] = useState(saved.step===undefined?'':String(saved.step)), [xText, setXText] = useState(Array.isArray(saved.xValues)?saved.xValues.join(' '):''), [extrapolate, setExtrapolate] = useState(saved.extrapolate===true);
   const [preview, setPreview] = useState<Preview | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
-  const [resultName, setResultName] = useState(''), [equation, setEquation] = useState('');
+  const [resultName, setResultName] = useState(typeof saved.resultName==='string'?saved.resultName:project.datasets.find(d=>d.id===editing?.resultDatasetId)?.name??''), [equation, setEquation] = useState('');
   const client = useRef<AnalysisWorkerClient | null>(null);
   if (!client.current) client.current = new AnalysisWorkerClient();
   const version = useRef(0), latest = useRef(project);
   latest.current = project;
-  const sources = useMemo(() => project.series.filter(s => project.datasets.some(d => d.id === s.datasetId) && !project.calculations.some(c => c.resultDatasetId === s.datasetId && c.status !== 'valid')), [project]);
+  const index=dependencyIndex(project);
+  const sources = useMemo(() => project.series.filter(s => index.datasets.has(s.datasetId) && (!index.producers.has(s.datasetId)||index.producers.get(s.datasetId)?.status==='valid')), [project.series,index]);
+  const sourceOptions=useMemo(()=>{const curves=seriesByDataset(project.series);return [...sources.map(s=>[s.id,s.name] as [string,string]),...project.datasets.filter(d=>!curves.has(d.id)&&(!index.producers.has(d.id)||index.producers.get(d.id)?.status==='valid')).map(d=>[`dataset:${d.id}`,d.name] as [string,string])]},[sources,project.datasets,project.series,index]);
   const series = sources.find(s => s.id === sourceId);
-  const dataset = project.datasets.find(d => d.id === series?.datasetId);
+  const dataset = project.datasets.find(d => d.id === (series?.datasetId??sourceId.replace(/^dataset:/,'')));
   const bounds = useMemo(() => {
     let min = Infinity, max = -Infinity;
     for (const p of dataset?.points ?? []) { min = Math.min(min, p.x); max = Math.max(max, p.x); }
     return [min, max] as const;
   }, [dataset?.points]);
-  useEffect(() => { if (!sources.some(s => s.id === sourceId)) setSourceId(sources[0]?.id ?? ''); }, [sources, sourceId]);
+  useEffect(() => { if (!editing&&!sourceOptions.some(([id])=>id===sourceId)) setSourceId(sourceOptions[0]?.[0] ?? ''); }, [sourceOptions, sourceId,editing]);
   useEffect(() => {
     version.current++;
     client.current?.cancel();
     setBusy(false); setPreview(null); setEquation(''); setError('');
-  }, [dataset?.points, kind, sourceId, windowSize, polyDegree, sgDegree, sortCopy, duplicates, selection, minText, maxText, rowFrom, rowTo, stepText, xText, extrapolate]);
+  }, [dataset?.points,project.calculations,project.axes.x.unit,project.axes.y.unit, kind, sourceId, windowSize, polyDegree, sgDegree, sortCopy, duplicates, selection, minText, maxText, rowFrom, rowTo, stepText, xText, extrapolate]);
   useEffect(() => () => { version.current++; client.current?.cancel(); }, []);
 
   function parameters(): Record<string, unknown> {
@@ -122,14 +137,15 @@ export function AnalysisPanel({ project, onChange, t, onClose }: AnalysisPanelPr
   const showError = (reason: unknown) => { if (!(reason instanceof Error && reason.name === 'AbortError')) setError(reason instanceof MathError ? reason.code : 'MATH_WORKER_FAILURE'); };
   function cancel() { version.current++; client.current?.cancel(); setBusy(false); setPreview(null); setEquation(''); }
   async function run() {
-    if (!dataset || !series) { setError('MATH_SOURCE_MISSING'); return; }
+    if (!dataset) { setError('MATH_SOURCE_MISSING'); return; }
+    if(index.producers.has(dataset.id)&&index.producers.get(dataset.id)?.status!=='valid'){setError('MATH_DEPENDENCY_INVALID');return}
     const token = ++version.current;
     try {
       const args = parameters();
       setError(''); setPreview(null); setBusy(true);
       const response = await client.current!.run({ type: 'preview', kind, points: dataset.points, parameters: args });
       if (version.current !== token || response.type !== 'preview') return;
-      setPreview({ result: response.result, kind, parameters: args, sourceSeriesId: series.id, sourceDatasetId: dataset.id, sourcePoints: dataset.points });
+      setPreview({ result: response.result, kind, parameters: args, sourceSeriesId: sourceId, sourceDatasetId: dataset.id, sourcePoints: dataset.points });
       setEquation(equationFor(kind, response.result.summary));
     } catch (reason) { if (version.current === token) showError(reason); }
     finally { if (version.current === token) setBusy(false); }
@@ -140,16 +156,19 @@ export function AnalysisPanel({ project, onChange, t, onClose }: AnalysisPanelPr
     try {
       const response = await client.current!.run({ type: 'recompute', project: snapshot });
       if (version.current !== token || response.type !== 'recompute') return;
-      if (latest.current !== snapshot) throw new MathError('MATH_PREVIEW_STALE');
-      onChange('recalculate', p => p === snapshot ? response.project : p);
+      if (!calculationInputsUnchanged(latest.current,snapshot)) throw new MathError('MATH_PREVIEW_STALE');
+      onChange('recalculate', p => response.patches?applyCalculationPatches(p,snapshot,response.patches):p);
     } catch (reason) { if (version.current === token) showError(reason); }
     finally { if (version.current === token) setBusy(false); }
   }
   function addResult() {
     if (!preview) return;
     if (project.datasets.find(d => d.id === preview.sourceDatasetId)?.points !== preview.sourcePoints) { setError('MATH_PREVIEW_STALE'); return; }
-    const name = resultName.trim() || `${t(preview.kind)} · ${series?.name ?? ''}`;
-    onChange('addResult', p => p.datasets.find(d => d.id === preview.sourceDatasetId)?.points === preview.sourcePoints ? addCalculation(p, preview.sourceSeriesId, preview.kind, preview.parameters, preview.result, name) : p);
+    const name = resultName.trim() || `${t(preview.kind)} · ${series?.name ?? dataset?.name ?? ''}`;
+    if(editing){
+      const snapshot=project;
+      onChange('UpdateCalculation',p=>{if(!calculationInputsUnchanged(p,snapshot))throw new MathError('MATH_PREVIEW_STALE');return replaceCalculation(p,editing.id,preview.parameters,preview.result,name)});
+    }else onChange('addResult', p => p.datasets.find(d => d.id === preview.sourceDatasetId)?.points === preview.sourcePoints ? addCalculation(p, preview.sourceSeriesId, preview.kind, preview.parameters, preview.result, name) : p);
     cancel();
   }
   function addEquation() {
@@ -164,8 +183,9 @@ export function AnalysisPanel({ project, onChange, t, onClose }: AnalysisPanelPr
   }
   const dirty = project.calculations.filter(c => c.status !== 'valid');
   return <Panel title={t('analysis')} onClose={onClose} t={t} className="analysis-panel">
-    <Select label={t('operation')} value={kind} items={operations.map(value => [value, t(value)])} onChange={value => setKind(value as CalculationKind)} />
-    <Select label={t('sourceSeries')} value={sourceId} items={sources.length ? sources.map(s => [s.id, s.name]) : [['', t('noData')]]} onChange={setSourceId} />
+    {onDataResults&&<button onClick={onDataResults}>{t('data.results')}</button>}
+    {editing?<><p className="analysis-note">{t('data.edit')} · {t(kind)}</p><p>{t('source')}: {project.datasets.find(d=>d.id===editing.sourceDatasetIds[0])?.name}</p></>:<><Select label={t('operation')} value={kind} items={analysisOperations.map(value => [value, t(value)])} onChange={value => onOperation(value as CalculationKind)} />
+    <Select label={t('sourceSeries')} value={sourceId} items={sourceOptions.length ? sourceOptions : [['', t('noData')]]} onChange={id=>{setSourceId(id);onSourcePicked?.(id)}} /></>}
     {series && <Check label={t('analysisSourceVisibility')} value={series.visible} onChange={visible => onChange('SetSeriesVisibility', p => ({ ...p, series: p.series.map(s => s.id === sourceId ? { ...s, visible } : s) }))} />}
     {dataset && <p className="analysis-note">{t('analysisSourceCount').replace('{n}', String(dataset.points.length))}</p>}
     <Select label={t('analysisSelection')} value={selection} items={['all', 'x', 'rows'].map(value => [value, t(value === 'all' ? 'analysisAll' : value === 'x' ? 'analysisXRange' : 'analysisRows')])} onChange={setSelection} />
@@ -186,16 +206,17 @@ export function AnalysisPanel({ project, onChange, t, onClose }: AnalysisPanelPr
       {preview.result.points.length > 0 && <PreviewPlot source={series?.visible ? preview.sourcePoints : []} points={preview.result.points} t={t} />}
       <Summary summary={preview.result.summary} t={t} />
       {preview.kind !== 'integral' && preview.kind !== 'statistics' && <Field label={t('name')}><input aria-label={t('name')} value={resultName} placeholder={`${t(preview.kind)} · ${series?.name ?? ''}`} onChange={e => setResultName(e.target.value)} /></Field>}
-      <div className="analysis-actions"><button className="primary" onClick={addResult}>{t('addResult')}</button></div>
+      <div className="analysis-actions"><button className="primary" onClick={addResult}>{t(editing?'apply':'addResult')}</button></div>
       {isFit(preview.kind) && <><Field label={t('equation')}><textarea className="analysis-equation" aria-label={t('equation')} value={equation} onChange={e => setEquation(e.target.value)} /></Field><button disabled={!equation.trim()} onClick={addEquation}>{t('addEquation')}</button></>}
     </div> : !busy && <p className="analysis-note">{t('analysisPreviewHint')}</p>}
     {project.calculations.length > 0 && <div className="analysis-pending">
       {dirty.length > 0 && <><p className="analysis-note">{t('outdated')} ({dirty.length})</p><button disabled={busy} onClick={() => void recompute()}>{t('recalculate')}</button></>}
-      {project.calculations.map(c => <details key={c.id} style={{ marginTop: 10 }}><summary className="analysis-status">{project.series.find(s => s.datasetId === c.resultDatasetId)?.name ?? t(c.kind)} · {t(c.status === 'valid' ? 'analysisValid' : c.status === 'outdated' ? 'outdated' : 'error')}</summary>
+      {project.calculations.slice(-30).map(c => <details key={c.id} style={{ marginTop: 10 }}><summary className="analysis-status">{project.series.find(s => s.datasetId === c.resultDatasetId)?.name ?? t(c.kind)} · {t(c.status === 'valid' ? 'analysisValid' : c.status === 'outdated' ? 'outdated' : 'error')}</summary>
         {c.status !== 'valid' && <p className="analysis-note">{t('analysisRetained')}</p>}
         {typeof c.summary.errorCode === 'string' && <p className="analysis-error" role="status">{t(c.summary.errorCode)}</p>}
         <Summary summary={c.summary} t={t} />
       </details>)}
+      {project.calculations.length>30&&onDataResults&&<button onClick={onDataResults}>{t('data.results')} ({project.calculations.length})</button>}
     </div>}
   </Panel>;
 }

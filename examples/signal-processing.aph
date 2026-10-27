@@ -1,0 +1,953 @@
+{
+  "format": "APIO_GRAPH_PROJECT",
+  "schemaVersion": "1.1.0",
+  "createdWith": {
+    "name": "APIO GRAPH",
+    "version": "1.2.0"
+  },
+  "project": {
+    "id": "26290160-5006-473f-a213-2546a457119d",
+    "title": "Synthetic signal processing example",
+    "createdAt": "2026-10-19T10:00:00Z",
+    "updatedAt": "2026-10-19T10:00:00Z"
+  },
+  "page": {
+    "widthPx": 1200,
+    "heightPx": 800,
+    "background": "#FFFFFF",
+    "paddingPx": 64
+  },
+  "axes": {
+    "x": {
+      "label": "X, s",
+      "unit": "s",
+      "scale": "linear",
+      "mode": "manual",
+      "min": 0,
+      "max": 5,
+      "tickMode": "auto",
+      "tickStep": 1,
+      "tickOrigin": 0,
+      "minorDivisions": 1,
+      "grid": true,
+      "numberFormat": "auto",
+      "precision": 3,
+      "strokeWidthPt": 1,
+      "labelSizePt": 13
+    },
+    "y": {
+      "label": "Y, mV",
+      "unit": "mV",
+      "scale": "linear",
+      "mode": "manual",
+      "min": 0,
+      "max": 10,
+      "tickMode": "auto",
+      "tickStep": 2,
+      "tickOrigin": 0,
+      "minorDivisions": 1,
+      "grid": true,
+      "numberFormat": "auto",
+      "precision": 3,
+      "strokeWidthPt": 1,
+      "labelSizePt": 13
+    }
+  },
+  "datasets": [
+    {
+      "id": "07f907c7-3de2-4530-998c-e9826ac49940",
+      "name": "Synthetic triangle + linear baseline",
+      "role": "raw",
+      "source": {
+        "kind": "manual"
+      },
+      "points": [
+        {
+          "id": "97522c29-9cb4-4661-ace3-837ee8541077",
+          "x": 0,
+          "y": 2
+        },
+        {
+          "id": "8541b128-3f13-47f2-811d-1b30b36061ec",
+          "x": 0.1,
+          "y": 2.02
+        },
+        {
+          "id": "978e9bca-04d6-4765-bc8d-f8b156fb70ae",
+          "x": 0.2,
+          "y": 2.04
+        },
+        {
+          "id": "0a4bc149-3bbb-4cfa-9ab3-7a4b0d408e63",
+          "x": 0.3,
+          "y": 2.06
+        },
+        {
+          "id": "adc0253c-67d4-4b48-9032-6997f4335de9",
+          "x": 0.4,
+          "y": 2.08
+        },
+        {
+          "id": "26357a03-576e-4abc-b9a2-6baba69257de",
+          "x": 0.5,
+          "y": 2.1
+        },
+        {
+          "id": "504a51fc-0a6c-4c27-b220-c35cf0e55bf6",
+          "x": 0.6,
+          "y": 2.12
+        },
+        {
+          "id": "8e2052a8-47fd-4749-95d6-a4ef2b263a21",
+          "x": 0.7,
+          "y": 2.14
+        },
+        {
+          "id": "495ef37a-7dfa-42b3-8976-55812f81892b",
+          "x": 0.8,
+          "y": 2.16
+        },
+        {
+          "id": "d1e82623-c895-46e6-ad8e-7e080199e09d",
+          "x": 0.9,
+          "y": 2.18
+        },
+        {
+          "id": "1fb2b5c9-9a95-44a9-89c7-26c4f3a99cde",
+          "x": 1,
+          "y": 2.2
+        },
+        {
+          "id": "53d6930f-0c91-4e2c-a40c-fda46fd7be8c",
+          "x": 1.1,
+          "y": 2.3200000000000003
+        },
+        {
+          "id": "3d660447-4b12-48b7-b5f7-d03b9f4f6515",
+          "x": 1.2,
+          "y": 2.4400000000000004
+        },
+        {
+          "id": "40d2ad7a-1227-4642-af96-fc465e2ebd03",
+          "x": 1.3,
+          "y": 2.5599999999999996
+        },
+        {
+          "id": "eb5b9452-e408-499e-b6dd-e3197f864838",
+          "x": 1.4,
+          "y": 2.6799999999999997
+        },
+        {
+          "id": "d8f8858f-cf71-4a79-ae20-932d94d99df0",
+          "x": 1.5,
+          "y": 2.8
+        },
+        {
+          "id": "1fb061c6-509d-4fa7-a07c-e5eeadd4f30e",
+          "x": 1.6,
+          "y": 2.9200000000000004
+        },
+        {
+          "id": "ac798e65-d633-4c03-91ab-7945d9a8ffdf",
+          "x": 1.7,
+          "y": 3.04
+        },
+        {
+          "id": "74d43761-621e-4209-9301-e0b569cede14",
+          "x": 1.8,
+          "y": 3.16
+        },
+        {
+          "id": "d946087e-9c75-4a5d-bef0-d4fc551cc25e",
+          "x": 1.9,
+          "y": 3.28
+        },
+        {
+          "id": "63a993ee-7b11-44fe-b55b-230394f713e4",
+          "x": 2,
+          "y": 3.4
+        },
+        {
+          "id": "6df34d5c-9958-4f1d-b2fb-55d1a6988331",
+          "x": 2.1,
+          "y": 3.32
+        },
+        {
+          "id": "a56cf177-86e4-4ca8-a305-847762b99332",
+          "x": 2.2,
+          "y": 3.2399999999999998
+        },
+        {
+          "id": "f48ec8dd-c174-43ab-815e-98a72e60278a",
+          "x": 2.3,
+          "y": 3.16
+        },
+        {
+          "id": "6dd340dc-fb70-4622-a265-123f205ab45d",
+          "x": 2.4,
+          "y": 3.08
+        },
+        {
+          "id": "b5302b60-bce8-41d8-a2d9-49dc5ede45b5",
+          "x": 2.5,
+          "y": 3
+        },
+        {
+          "id": "25fdd788-5a8a-41bc-9b4c-0c5eeee7e4c3",
+          "x": 2.6,
+          "y": 2.92
+        },
+        {
+          "id": "ff7f60b0-9b9c-4622-8e60-3023a7914dc0",
+          "x": 2.7,
+          "y": 2.84
+        },
+        {
+          "id": "57e18b59-dc98-4f12-b3ef-e2f6b852f9ea",
+          "x": 2.8,
+          "y": 2.7600000000000002
+        },
+        {
+          "id": "27fe1c51-da39-4376-8f58-998c54f8ec2b",
+          "x": 2.9,
+          "y": 2.68
+        },
+        {
+          "id": "f29981e7-0999-44ae-9ac1-ed9858153919",
+          "x": 3,
+          "y": 2.6
+        },
+        {
+          "id": "2ddd7cfb-3dd7-4e98-a842-0b1a57562681",
+          "x": 3.1,
+          "y": 2.62
+        },
+        {
+          "id": "24bbd9dc-42db-4e23-a910-cbca7ec9d063",
+          "x": 3.2,
+          "y": 2.64
+        },
+        {
+          "id": "019e719a-866c-435f-aef7-22c5905bbba3",
+          "x": 3.3,
+          "y": 2.66
+        },
+        {
+          "id": "b5ec00f0-19a4-4e34-bec2-5a82d9e5e184",
+          "x": 3.4,
+          "y": 2.68
+        },
+        {
+          "id": "13da883e-d8d6-4eb1-9eb2-05951673d943",
+          "x": 3.5,
+          "y": 2.7
+        },
+        {
+          "id": "daacdec1-e2ce-48b3-832b-0e198c1fbd25",
+          "x": 3.6,
+          "y": 2.72
+        },
+        {
+          "id": "692366c6-667b-4445-8c9b-6bb986c32e22",
+          "x": 3.7,
+          "y": 2.74
+        },
+        {
+          "id": "2b2f2768-d4f2-4d57-b9d6-627bd26cd3a1",
+          "x": 3.8,
+          "y": 2.76
+        },
+        {
+          "id": "14223e9a-0045-48e2-80d4-16567abf134e",
+          "x": 3.9,
+          "y": 2.7800000000000002
+        },
+        {
+          "id": "6124bcba-55e3-4863-aec5-026960506edc",
+          "x": 4,
+          "y": 2.8
+        }
+      ]
+    },
+    {
+      "id": "ff3530ce-1d06-4591-a48a-1a7187abcfe4",
+      "name": "Manual baseline",
+      "role": "derived",
+      "source": {
+        "kind": "calculation",
+        "calculationId": "d9478f1e-0a52-4e4a-8040-d6cdd0016c1c"
+      },
+      "points": [
+        {
+          "x": 0,
+          "y": 2,
+          "id": "dda66643-0fbb-4890-84a6-ba81b0c80535"
+        },
+        {
+          "x": 0.1,
+          "y": 2.02,
+          "id": "bfa3fe6a-6c9f-4ecd-b348-d173bdf8fcbc"
+        },
+        {
+          "x": 0.2,
+          "y": 2.04,
+          "id": "e29f3449-3396-4db5-812c-c2b8a0429b32"
+        },
+        {
+          "x": 0.3,
+          "y": 2.06,
+          "id": "862b29f6-a263-4a7b-8495-1cc84c19a6d4"
+        },
+        {
+          "x": 0.4,
+          "y": 2.08,
+          "id": "aa1178fd-b25b-498f-b8b5-12f8a59ffcd1"
+        },
+        {
+          "x": 0.5,
+          "y": 2.1,
+          "id": "6260e51a-99d4-4104-9ebe-b64139bde552"
+        },
+        {
+          "x": 0.6,
+          "y": 2.12,
+          "id": "62e6c351-1364-4bb5-8c6c-46dabc14e2fd"
+        },
+        {
+          "x": 0.7,
+          "y": 2.1399999999999997,
+          "id": "11c9bfa2-edc2-4c45-b36d-a3616c5e76ad"
+        },
+        {
+          "x": 0.8,
+          "y": 2.16,
+          "id": "9fa109a1-1aa2-4bd0-a9f5-f1411c369440"
+        },
+        {
+          "x": 0.9,
+          "y": 2.18,
+          "id": "100d0de8-0e90-413c-90ff-51868d1fc000"
+        },
+        {
+          "x": 1,
+          "y": 2.2,
+          "id": "216d5e7a-4c11-4ee9-98a9-0488210f9f3e"
+        },
+        {
+          "x": 1.1,
+          "y": 2.2199999999999998,
+          "id": "00e36ac1-2bfd-4e73-a0db-c39e4da68fb0"
+        },
+        {
+          "x": 1.2,
+          "y": 2.2399999999999998,
+          "id": "8d55088e-45a5-4ea5-a9d6-17ebd715d455"
+        },
+        {
+          "x": 1.3,
+          "y": 2.26,
+          "id": "0215f8ae-c66a-4cc6-b8df-61d98c3b51b3"
+        },
+        {
+          "x": 1.4,
+          "y": 2.28,
+          "id": "8b695609-ad98-4e91-8a1b-3be35ae5c03c"
+        },
+        {
+          "x": 1.5,
+          "y": 2.3,
+          "id": "68e6ce00-236f-41dc-bf01-0fe9dee4a546"
+        },
+        {
+          "x": 1.6,
+          "y": 2.32,
+          "id": "95325457-fa21-4f65-9c5b-29dcc9723c85"
+        },
+        {
+          "x": 1.7,
+          "y": 2.34,
+          "id": "1109f9c9-9898-4c7d-9dc1-dc5edc8a5a54"
+        },
+        {
+          "x": 1.8,
+          "y": 2.3600000000000003,
+          "id": "01c2ec87-5e84-4b5d-a14a-91c6b0a79bc4"
+        },
+        {
+          "x": 1.9,
+          "y": 2.38,
+          "id": "3255aa89-2933-4b0a-9c6e-b8ab5292302d"
+        },
+        {
+          "x": 2,
+          "y": 2.4,
+          "id": "ac1e3256-ddbb-4bc7-9e8e-bdba04ded5de"
+        },
+        {
+          "x": 2.1,
+          "y": 2.42,
+          "id": "1f0d4ec6-25f0-4e85-8c04-1067794677ec"
+        },
+        {
+          "x": 2.2,
+          "y": 2.44,
+          "id": "a7753d97-42b9-4251-a8ef-8dcacbf105db"
+        },
+        {
+          "x": 2.3,
+          "y": 2.46,
+          "id": "7e13830c-d7aa-4444-8c5c-641371752660"
+        },
+        {
+          "x": 2.4,
+          "y": 2.48,
+          "id": "87750e83-50aa-4354-bdc1-06d2fcf45aaf"
+        },
+        {
+          "x": 2.5,
+          "y": 2.5,
+          "id": "dfd9f1d5-740d-41e4-a4f0-186738584a1f"
+        },
+        {
+          "x": 2.6,
+          "y": 2.5199999999999996,
+          "id": "12a2790e-c739-45c3-ba4f-6831c065b1f9"
+        },
+        {
+          "x": 2.7,
+          "y": 2.54,
+          "id": "d6726902-6775-40c9-977f-66d77f8d6ad8"
+        },
+        {
+          "x": 2.8,
+          "y": 2.5599999999999996,
+          "id": "d3eb4ac0-c3fa-4847-8e66-bf6870e462c3"
+        },
+        {
+          "x": 2.9,
+          "y": 2.58,
+          "id": "ec3930b2-e682-4c02-a5cd-1add406c96e3"
+        },
+        {
+          "x": 3,
+          "y": 2.5999999999999996,
+          "id": "071c5d32-e5b6-4f2a-a206-bcc6b075820b"
+        },
+        {
+          "x": 3.1,
+          "y": 2.62,
+          "id": "cd295a52-1b5f-442f-a98a-6348ec7edacb"
+        },
+        {
+          "x": 3.2,
+          "y": 2.6399999999999997,
+          "id": "d9c4d1c2-c9ab-41e3-a90f-ab7cf28cb9c9"
+        },
+        {
+          "x": 3.3,
+          "y": 2.6599999999999997,
+          "id": "17d04ca3-438b-4518-9cce-800f0e5cd985"
+        },
+        {
+          "x": 3.4,
+          "y": 2.6799999999999997,
+          "id": "37e5a01f-6e1a-40c5-8fd9-bba82a65a836"
+        },
+        {
+          "x": 3.5,
+          "y": 2.6999999999999997,
+          "id": "b8c8f236-d091-45e3-b5d8-ba3a9f33e824"
+        },
+        {
+          "x": 3.6,
+          "y": 2.7199999999999998,
+          "id": "c41f3a44-c341-482c-81d3-52be8ece5055"
+        },
+        {
+          "x": 3.7,
+          "y": 2.7399999999999998,
+          "id": "163e2ea6-82d3-4110-a0fa-46a5e16df60c"
+        },
+        {
+          "x": 3.8,
+          "y": 2.76,
+          "id": "513976a9-79aa-47d5-a243-56e90f0d4a42"
+        },
+        {
+          "x": 3.9,
+          "y": 2.7800000000000002,
+          "id": "a00740f1-3b01-43df-b362-64c3958d8efb"
+        },
+        {
+          "x": 4,
+          "y": 2.8,
+          "id": "63d7a403-59f1-4d05-ae19-f4da54268a71"
+        }
+      ]
+    },
+    {
+      "id": "702047a2-f872-4352-aa96-fc7880386c79",
+      "name": "Corrected signal",
+      "role": "derived",
+      "source": {
+        "kind": "calculation",
+        "calculationId": "3fc55941-2f57-4b28-8d52-bffab79435db"
+      },
+      "points": [
+        {
+          "x": 0,
+          "y": 0,
+          "id": "2f6183e6-0c9e-4c91-a623-bf8cac5d5ea1"
+        },
+        {
+          "x": 0.1,
+          "y": 0,
+          "id": "700503cf-d358-4c71-8383-f06cf1129af9"
+        },
+        {
+          "x": 0.2,
+          "y": 0,
+          "id": "49ed1eda-3d1c-4690-92c4-efccac7a27ad"
+        },
+        {
+          "x": 0.3,
+          "y": 0,
+          "id": "517e3189-06d3-43bd-9824-381d0001d863"
+        },
+        {
+          "x": 0.4,
+          "y": 0,
+          "id": "6e4aa565-1020-4ffe-9b6e-326f14fe3954"
+        },
+        {
+          "x": 0.5,
+          "y": 0,
+          "id": "3fdb480b-7016-4d51-a3f9-8fe460e90789"
+        },
+        {
+          "x": 0.6,
+          "y": 0,
+          "id": "67833d68-5858-46c2-b1d2-b4b7900a261f"
+        },
+        {
+          "x": 0.7,
+          "y": 4.440892098500626e-16,
+          "id": "c616d304-26ea-4c92-b523-b6fa3d64d920"
+        },
+        {
+          "x": 0.8,
+          "y": 0,
+          "id": "9e5282e1-3045-4543-b639-53116e11504d"
+        },
+        {
+          "x": 0.9,
+          "y": 0,
+          "id": "6e319c07-a5ec-498c-b8b8-6112ed01581c"
+        },
+        {
+          "x": 1,
+          "y": 0,
+          "id": "0239ee04-52b8-494c-8eec-dee2783309e9"
+        },
+        {
+          "x": 1.1,
+          "y": 0.10000000000000053,
+          "id": "e4f60736-0639-4db5-a7bf-ecaa59e08706"
+        },
+        {
+          "x": 1.2,
+          "y": 0.20000000000000062,
+          "id": "1be20e00-e42d-4679-b3d7-d47e7cc7ae4c"
+        },
+        {
+          "x": 1.3,
+          "y": 0.2999999999999998,
+          "id": "b36568bc-ea01-46a8-abd2-ddba85ef7a97"
+        },
+        {
+          "x": 1.4,
+          "y": 0.3999999999999999,
+          "id": "7f790b3b-7ad3-4949-9366-3010c9be1745"
+        },
+        {
+          "x": 1.5,
+          "y": 0.5,
+          "id": "320206c7-3fc0-4cbb-92ba-2277d794e1d8"
+        },
+        {
+          "x": 1.6,
+          "y": 0.6000000000000005,
+          "id": "fb6a7fdd-12ea-4ff2-a85e-25cad55d4ab8"
+        },
+        {
+          "x": 1.7,
+          "y": 0.7000000000000002,
+          "id": "cd73cd76-7400-42c3-9a6c-78beb2da7b7e"
+        },
+        {
+          "x": 1.8,
+          "y": 0.7999999999999998,
+          "id": "edd9ae1e-7e67-4405-bc98-002d1c9083d0"
+        },
+        {
+          "x": 1.9,
+          "y": 0.8999999999999999,
+          "id": "517a8a4c-5509-4bb2-ab76-8714c6d00569"
+        },
+        {
+          "x": 2,
+          "y": 1,
+          "id": "76e4e6e0-e17d-4f68-8742-f38d304ad51b"
+        },
+        {
+          "x": 2.1,
+          "y": 0.8999999999999999,
+          "id": "355265aa-6c07-4889-8bb5-287dd4e4030a"
+        },
+        {
+          "x": 2.2,
+          "y": 0.7999999999999998,
+          "id": "db73143a-b65b-449c-a161-3224bc4b7d11"
+        },
+        {
+          "x": 2.3,
+          "y": 0.7000000000000002,
+          "id": "177783de-8b3d-40f0-b2bb-700b05051177"
+        },
+        {
+          "x": 2.4,
+          "y": 0.6000000000000001,
+          "id": "42684127-bee1-4433-bd8e-22876947f8f2"
+        },
+        {
+          "x": 2.5,
+          "y": 0.5,
+          "id": "8aa5c041-93fa-49dd-a7f0-4d0a30f6e283"
+        },
+        {
+          "x": 2.6,
+          "y": 0.40000000000000036,
+          "id": "63cad8a2-9b8b-4226-a4ff-53c0d1c24f68"
+        },
+        {
+          "x": 2.7,
+          "y": 0.2999999999999998,
+          "id": "80997152-26ec-4f00-a1b1-8a5a5ddbb8e4"
+        },
+        {
+          "x": 2.8,
+          "y": 0.20000000000000062,
+          "id": "29aee81c-f04a-4779-9512-758e4de40a4d"
+        },
+        {
+          "x": 2.9,
+          "y": 0.10000000000000009,
+          "id": "c3d608e7-cb22-40f7-9a9e-9dbbea4cf03c"
+        },
+        {
+          "x": 3,
+          "y": 4.440892098500626e-16,
+          "id": "9cf3f795-6920-46a0-a6ce-ccbb6f659348"
+        },
+        {
+          "x": 3.1,
+          "y": 0,
+          "id": "bc7a99c8-f5b5-49b9-b5d0-c2c55e5303f8"
+        },
+        {
+          "x": 3.2,
+          "y": 4.440892098500626e-16,
+          "id": "6b9f7664-1908-4cfe-9955-fe3acadfab27"
+        },
+        {
+          "x": 3.3,
+          "y": 4.440892098500626e-16,
+          "id": "08763763-b238-48ec-b523-d0f6f7dd3455"
+        },
+        {
+          "x": 3.4,
+          "y": 4.440892098500626e-16,
+          "id": "d8f98d6a-f67a-4a30-b499-ea255a7ad3d8"
+        },
+        {
+          "x": 3.5,
+          "y": 4.440892098500626e-16,
+          "id": "d688c923-8a03-40ea-85c4-7bbbd0d8bd18"
+        },
+        {
+          "x": 3.6,
+          "y": 4.440892098500626e-16,
+          "id": "b93835f3-d2fe-4d3c-80f7-85cf5df29c04"
+        },
+        {
+          "x": 3.7,
+          "y": 4.440892098500626e-16,
+          "id": "1c2f43a1-129f-434c-99b2-fbb7ae0eb97d"
+        },
+        {
+          "x": 3.8,
+          "y": 0,
+          "id": "cf832af5-df08-4ba4-8961-c83c7d629b90"
+        },
+        {
+          "x": 3.9,
+          "y": 0,
+          "id": "cb2bf4e1-286d-4b0c-92fd-24e6b8b11c7d"
+        },
+        {
+          "x": 4,
+          "y": 0,
+          "id": "a7c7a1e1-525d-4257-8de2-f7e9e9abe063"
+        }
+      ]
+    }
+  ],
+  "series": [
+    {
+      "id": "979a4bae-c38e-4407-80d3-2e03aa2ffd68",
+      "datasetId": "07f907c7-3de2-4530-998c-e9826ac49940",
+      "name": "Synthetic measurement",
+      "visible": true,
+      "includeInAutoRange": true,
+      "order": 0,
+      "mode": "line",
+      "style": {
+        "stroke": "#000000",
+        "strokeWidthPt": 1.3,
+        "opacity": 1,
+        "dash": "solid",
+        "markerShape": "circle",
+        "markerSizePt": 3,
+        "markerFill": "#FFFFFF",
+        "markerStroke": "#000000",
+        "markerVisible": false
+      }
+    },
+    {
+      "id": "f5121194-f5b1-4ba5-a1da-117d9e74e779",
+      "datasetId": "ff3530ce-1d06-4591-a48a-1a7187abcfe4",
+      "name": "Manual baseline",
+      "visible": true,
+      "includeInAutoRange": true,
+      "order": 1,
+      "mode": "line",
+      "style": {
+        "stroke": "#000000",
+        "strokeWidthPt": 1.3,
+        "opacity": 1,
+        "dash": "dash",
+        "markerShape": "circle",
+        "markerSizePt": 3,
+        "markerFill": "#FFFFFF",
+        "markerStroke": "#000000",
+        "markerVisible": false
+      }
+    },
+    {
+      "id": "60b132ca-6295-4c62-961e-386a00a796d6",
+      "datasetId": "702047a2-f872-4352-aa96-fc7880386c79",
+      "name": "Corrected signal",
+      "visible": true,
+      "includeInAutoRange": true,
+      "order": 2,
+      "mode": "line",
+      "style": {
+        "stroke": "#000000",
+        "strokeWidthPt": 1.3,
+        "opacity": 1,
+        "dash": "solid",
+        "markerShape": "circle",
+        "markerSizePt": 3,
+        "markerFill": "#FFFFFF",
+        "markerStroke": "#000000",
+        "markerVisible": false
+      }
+    }
+  ],
+  "objects": [],
+  "calculations": [
+    {
+      "id": "d9478f1e-0a52-4e4a-8040-d6cdd0016c1c",
+      "kind": "baseline",
+      "sourceDatasetIds": [
+        "07f907c7-3de2-4530-998c-e9826ac49940"
+      ],
+      "resultDatasetId": "ff3530ce-1d06-4591-a48a-1a7187abcfe4",
+      "parameters": {
+        "method": "manual",
+        "nodes": [
+          {
+            "x": 0,
+            "y": 2
+          },
+          {
+            "x": 4,
+            "y": 2.8
+          }
+        ],
+        "output": "baseline",
+        "extrapolate": false,
+        "resultName": "Manual baseline",
+        "sourceUnits": {
+          "x": "s",
+          "y": "mV"
+        },
+        "calculatedAt": "2026-10-26T12:55:37.576Z"
+      },
+      "summary": {
+        "method": "piecewise-linear-manual",
+        "nodes": 2,
+        "n": 41,
+        "output": "baseline"
+      },
+      "algorithmVersion": 1,
+      "status": "valid"
+    },
+    {
+      "id": "3fc55941-2f57-4b28-8d52-bffab79435db",
+      "kind": "baseline",
+      "sourceDatasetIds": [
+        "07f907c7-3de2-4530-998c-e9826ac49940"
+      ],
+      "resultDatasetId": "702047a2-f872-4352-aa96-fc7880386c79",
+      "parameters": {
+        "method": "manual",
+        "nodes": [
+          {
+            "x": 0,
+            "y": 2
+          },
+          {
+            "x": 4,
+            "y": 2.8
+          }
+        ],
+        "output": "corrected",
+        "extrapolate": false,
+        "resultName": "Corrected signal",
+        "sourceUnits": {
+          "x": "s",
+          "y": "mV"
+        },
+        "calculatedAt": "2026-10-26T12:55:37.576Z"
+      },
+      "summary": {
+        "method": "piecewise-linear-manual",
+        "nodes": 2,
+        "n": 41,
+        "output": "corrected"
+      },
+      "algorithmVersion": 1,
+      "status": "valid"
+    },
+    {
+      "id": "0ca82df0-f5c0-4cbc-8152-1cd6f987ad93",
+      "kind": "peaks",
+      "sourceDatasetIds": [
+        "702047a2-f872-4352-aa96-fc7880386c79"
+      ],
+      "resultDatasetId": null,
+      "parameters": {
+        "includeIncomplete": false,
+        "relativeHeight": 0.5,
+        "resultName": "Triangle peak",
+        "sourceUnits": {
+          "x": "s",
+          "y": "mV"
+        },
+        "prominence": 0.1,
+        "calculatedAt": "2026-10-26T12:55:37.576Z"
+      },
+      "summary": {
+        "n": 41,
+        "peakCount": 1,
+        "incompleteCount": 0,
+        "excludedFilters": 2,
+        "excludedUndefined": 0,
+        "method": "topographic-prominence-half-prominence-width",
+        "relativeHeight": 0.5
+      },
+      "algorithmVersion": 1,
+      "status": "valid",
+      "data": {
+        "peaks": [
+          {
+            "index": 20,
+            "x": 2,
+            "y": 1,
+            "direction": "max",
+            "prominence": 1,
+            "width": 1,
+            "left": 1.5,
+            "right": 2.5,
+            "level": 0.5,
+            "incomplete": false
+          }
+        ]
+      },
+      "display": {
+        "visible": true,
+        "stroke": "#000000",
+        "opacity": 0.18,
+        "label": false
+      }
+    },
+    {
+      "id": "2c283724-9ece-4517-b78c-381b10189298",
+      "kind": "area",
+      "sourceDatasetIds": [
+        "07f907c7-3de2-4530-998c-e9826ac49940",
+        "ff3530ce-1d06-4591-a48a-1a7187abcfe4"
+      ],
+      "resultDatasetId": null,
+      "parameters": {
+        "range": [
+          0.5,
+          3.5
+        ],
+        "baselineDatasetId": "ff3530ce-1d06-4591-a48a-1a7187abcfe4",
+        "resultName": "Triangle area above baseline",
+        "sourceUnits": {
+          "x": "s",
+          "y": "mV"
+        },
+        "calculatedAt": "2026-10-26T12:55:37.576Z"
+      },
+      "summary": {
+        "integral": 1.0000000000000004,
+        "absoluteIntegral": 1.0000000000000004,
+        "n": 31,
+        "startX": 0.5,
+        "endX": 3.5,
+        "method": "signed-trapezoids-union-grid-baseline"
+      },
+      "algorithmVersion": 1,
+      "status": "valid",
+      "display": {
+        "visible": true,
+        "stroke": "#000000",
+        "opacity": 0.18,
+        "label": true
+      }
+    }
+  ],
+  "legend": {
+    "visible": false,
+    "anchor": {
+      "mode": "page",
+      "pageX": 0.8,
+      "pageY": 0.1
+    }
+  },
+  "viewport": {
+    "xMin": -0.2,
+    "xMax": 4.2,
+    "yMin": -0.2,
+    "yMax": 4.2
+  },
+  "editor": {
+    "selectedObjectId": null,
+    "showPointMarkers": true
+  },
+  "extensions": {}
+}

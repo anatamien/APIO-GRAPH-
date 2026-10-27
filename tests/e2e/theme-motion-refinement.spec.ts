@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {addPairs,createProject,makeObject} from '../../src/domain/model';
@@ -20,7 +21,7 @@ test('light, dark and both system themes adapt the default canvas and curve with
   await expect(chart.locator('[data-object] text')).toHaveCSS('fill',ink);
   if(theme!=='system')await page.screenshot({path:info.outputPath(`canvas-${theme}.png`)});
  }
- const pending=page.waitForEvent('download');await button(page,'Сохранить').click();const saved=JSON.parse(await readFile((await(await pending).path())!,'utf8'));expect(saved.datasets).toEqual(p.datasets);expect(saved.series).toEqual(p.series);expect(saved.page).toEqual(p.page);expect(saved.objects).toEqual(p.objects);
+ const pending=page.waitForEvent('download');await button(page,'Сохранить').click();const saved=await downloadedGraph(await readFile((await(await pending).path())!));expect(saved.datasets).toEqual(p.datasets);expect(saved.series).toEqual(p.series);expect(saved.page).toEqual(p.page);expect(saved.objects).toEqual(p.objects);
  await setTheme(page,'dark');await button(page,'Экспорт').click();const panel=page.locator('.export-panel');await panel.getByLabel('Формат',{exact:true}).selectOption('svg');const fallback=panel.getByLabel('Продолжить с системным моноширинным шрифтом',{exact:true});if(await fallback.count())await fallback.check();const download=page.waitForEvent('download');await panel.getByRole('button',{name:'Сохранить изображение',exact:true}).click();const svg=await readFile((await(await download).path())!,'utf8');expect(svg).toContain('fill="#FFFFFF"');expect(svg).toContain('stroke="#000000"');expect(svg).toContain('stroke="#D04040"');expect(svg).not.toContain('var(--plot');expect(svg).not.toContain('data-canvas-');
 });
 

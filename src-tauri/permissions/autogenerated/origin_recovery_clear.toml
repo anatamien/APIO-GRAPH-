@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-origin-recovery-clear"
+description = "Enables the origin_recovery_clear command without any pre-configured scope."
+commands.allow = ["origin_recovery_clear"]
+
+[[permission]]
+identifier = "deny-origin-recovery-clear"
+description = "Denies the origin_recovery_clear command without any pre-configured scope."
+commands.deny = ["origin_recovery_clear"]

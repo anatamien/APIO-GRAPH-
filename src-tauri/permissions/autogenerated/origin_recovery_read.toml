@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-origin-recovery-read"
+description = "Enables the origin_recovery_read command without any pre-configured scope."
+commands.allow = ["origin_recovery_read"]
+
+[[permission]]
+identifier = "deny-origin-recovery-read"
+description = "Denies the origin_recovery_read command without any pre-configured scope."
+commands.deny = ["origin_recovery_read"]

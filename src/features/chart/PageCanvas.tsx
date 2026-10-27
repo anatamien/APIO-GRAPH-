@@ -1,0 +1,19 @@
+import {useEffect,useRef,useState} from 'react';
+import {ChartCanvas,type ChartProps} from './ChartCanvas';
+import {areaProject,applyArea,plotAreas} from '../../domain/plotAreas';
+import {ChartScene} from './ChartScene';
+import {isPageObject} from './PageScene';
+export function PageCanvas(props:ChartProps){
+ const layout=plotAreas(props.project),host=useRef<HTMLDivElement>(null),[size,setSize]=useState({width:1200,height:800});
+ useEffect(()=>{const node=host.current;if(!node)return;const observer=new ResizeObserver(([e])=>setSize(e.contentRect));observer.observe(node);return()=>observer.disconnect()},[!!layout]);
+ if(!layout)return <ChartCanvas {...props}/>;
+ const overlapping=layout.areas.some((a,i)=>layout.areas.some((b,j)=>i!==j&&Math.min(a.frame[2],b.frame[2])-Math.max(a.frame[0],b.frame[0])>.01&&Math.min(a.frame[3],b.frame[3])-Math.max(a.frame[1],b.frame[1])>.01));
+ const p=props.project,scale=Math.min(size.width/p.page.widthPx,size.height/p.page.heightPx),width=p.page.widthPx*scale,height=p.page.heightPx*scale;
+ return <div ref={host} className="multi-page-host" style={{height:'100%',position:'relative',overflow:'hidden'}}><div style={{position:'absolute',width,height,left:(size.width-width)/2,top:(size.height-height)/2,background:p.page.background}}>{layout.areas.map(a=>{
+  const [x,y,r,b]=a.frame,left=Math.max(0,x-.105),top=Math.max(0,y-.035),right=Math.min(1,r+.035),bottom=Math.min(1,b+.09),frame:[number,number,number,number]=[(x-left)/(right-left),(y-top)/(bottom-top),(r-left)/(right-left),(b-top)/(bottom-top)];
+  const part=areaProject(p,a,frame,[left,top,right,bottom]);
+  return <div key={a.id} data-plot-area={a.id} style={{position:'absolute',zIndex:layout.activeId===a.id?1:0,left:left*width,top:top*height,width:(right-left)*width,height:(bottom-top)*height,pointerEvents:overlapping&&layout.activeId!==a.id?'none':undefined}}><ChartCanvas {...props} signalInteraction={layout.activeId===a.id?props.signalInteraction:undefined} project={{...part,legend:{...part.legend,visible:false},objects:part.objects.filter(o=>!isPageObject(o))}} compact transparent onChange={(label,apply)=>props.onChange(label,root=>applyArea(root,a.id,q=>{const next=apply(q);return {...next,legend:q.legend,objects:[...q.objects.filter(isPageObject),...next.objects.filter(o=>!isPageObject(o)||!q.objects.some(old=>old.id===o.id))]};},frame,[left,top,right,bottom]))} onNavigate={v=>props.onAreaNavigate?.(a.id,v)} onSelect={s=>{props.onAreaActivate?.(a.id);props.onSelect(s)}} selection={layout.activeId===a.id?props.selection:[]}/></div>;
+ })}<svg className="page-legends" width="100%" height="100%" viewBox={`0 0 ${p.page.widthPx} ${p.page.heightPx}`} style={{position:'absolute',inset:0,zIndex:2,pointerEvents:'none'}}>{layout.areas.map(a=><ChartScene key={a.id} p={areaProject(p,a)} width={p.page.widthPx} height={p.page.heightPx} transparent screen includeSeries={false} includeObjects={false} includeAxes={false}/>)}</svg>
+ {(props.tool==='table'||p.objects.some(isPageObject))&&<div data-table-placement={props.tool==='table'} className="page-object-overlay" style={{position:'absolute',inset:0,zIndex:3,pointerEvents:'none'}}><ChartCanvas {...props} project={{...p,objects:p.objects.filter(isPageObject)}} objectLayer compact transparent tool={props.tool==='table'?'table':'select'} onChange={(label,apply)=>props.onChange(label,root=>{const before=root.objects.filter(isPageObject),next=apply({...root,objects:before});return {...next,objects:[...root.objects.filter(o=>!isPageObject(o)),...next.objects]}})}/></div>}
+ </div>{overlapping&&<select className="page-area-selector" aria-label={props.t('originArea')} value={layout.activeId} onChange={e=>props.onAreaActivate?.(e.target.value)}>{layout.areas.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select>}</div>;
+}

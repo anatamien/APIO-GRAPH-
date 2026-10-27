@@ -1,0 +1,1266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/anatamien/APIO-GRAPH/blob/main/schemas/aph-1.2.schema.json",
+  "title": "APIO GRAPH project file v1.2",
+  "description": "Self-contained UTF-8 JSON project. Referential and numeric semantic validation is additionally required.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "APIO_GRAPH_PROJECT"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^1\\.2\\.[0-9]+$"
+    },
+    "createdWith": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "const": "APIO GRAPH"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ]
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "widthPx": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "heightPx": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "background": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "paddingPx": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2000
+        }
+      },
+      "required": [
+        "widthPx",
+        "heightPx",
+        "background",
+        "paddingPx"
+      ]
+    },
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/axis"
+        },
+        "y": {
+          "$ref": "#/$defs/axis"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ]
+    },
+    "datasets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dataset"
+      },
+      "maxItems": 1000
+    },
+    "series": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/series"
+      },
+      "maxItems": 1000
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/drawObject"
+      },
+      "maxItems": 100000
+    },
+    "calculations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/calculation"
+      },
+      "maxItems": 10000
+    },
+    "legend": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "visible": {
+          "type": "boolean"
+        },
+        "anchor": {
+          "$ref": "#/$defs/anchor"
+        }
+      },
+      "required": [
+        "visible",
+        "anchor"
+      ]
+    },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "xMin": {
+          "type": "number"
+        },
+        "xMax": {
+          "type": "number"
+        },
+        "yMin": {
+          "type": "number"
+        },
+        "yMax": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "xMin",
+        "xMax",
+        "yMin",
+        "yMax"
+      ]
+    },
+    "editor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selectedObjectId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "showPointMarkers": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "selectedObjectId",
+        "showPointMarkers"
+      ]
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "format",
+    "schemaVersion",
+    "createdWith",
+    "project",
+    "page",
+    "axes",
+    "datasets",
+    "series",
+    "objects",
+    "calculations",
+    "legend",
+    "viewport",
+    "editor",
+    "extensions"
+  ],
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "x",
+        "y"
+      ]
+    },
+    "anchor": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "data"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "mode",
+            "x",
+            "y"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "page"
+            },
+            "pageX": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "pageY": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "mode",
+            "pageX",
+            "pageY"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "point"
+            },
+            "datasetId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "pointId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "fallbackX": {
+              "type": "number"
+            },
+            "fallbackY": {
+              "type": "number"
+            },
+            "offsetXpx": {
+              "type": "number"
+            },
+            "offsetYpx": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "mode",
+            "datasetId",
+            "pointId",
+            "fallbackX",
+            "fallbackY",
+            "offsetXpx",
+            "offsetYpx"
+          ]
+        }
+      ]
+    },
+    "axis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "scale": {
+          "const": "linear"
+        },
+        "mode": {
+          "enum": [
+            "auto",
+            "manual"
+          ]
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "tickMode": {
+          "enum": [
+            "auto",
+            "manual"
+          ]
+        },
+        "tickStep": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "tickOrigin": {
+          "type": "number"
+        },
+        "minorDivisions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "grid": {
+          "type": "boolean"
+        },
+        "numberFormat": {
+          "enum": [
+            "auto",
+            "fixed",
+            "scientific"
+          ]
+        },
+        "precision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "strokeWidthPt": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 24
+        },
+        "labelSizePt": {
+          "type": "number",
+          "minimum": 6,
+          "maximum": 72
+        }
+      },
+      "required": [
+        "label",
+        "unit",
+        "scale",
+        "mode",
+        "min",
+        "max",
+        "tickMode",
+        "tickStep",
+        "tickOrigin",
+        "minorDivisions",
+        "grid",
+        "numberFormat",
+        "precision",
+        "strokeWidthPt",
+        "labelSizePt"
+      ]
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "role": {
+          "enum": [
+            "raw",
+            "derived"
+          ]
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "import",
+                "clipboard",
+                "manual",
+                "calculation"
+              ]
+            },
+            "displayName": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "calculationId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point"
+          },
+          "maxItems": 1000000
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "role",
+        "source",
+        "points"
+      ]
+    },
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "datasetId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "includeInAutoRange": {
+          "type": "boolean"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "line",
+            "points",
+            "line-points"
+          ]
+        },
+        "style": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stroke": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "strokeWidthPt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 24
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "dash": {
+              "enum": [
+                "solid",
+                "dash",
+                "dot",
+                "dash-dot"
+              ]
+            },
+            "markerShape": {
+              "enum": [
+                "circle",
+                "square",
+                "triangle",
+                "diamond",
+                "cross",
+                "plus"
+              ]
+            },
+            "markerSizePt": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 32
+            },
+            "markerFill": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "markerStroke": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "markerVisible": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stroke",
+            "strokeWidthPt",
+            "opacity",
+            "dash",
+            "markerShape",
+            "markerSizePt",
+            "markerFill",
+            "markerStroke",
+            "markerVisible"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "datasetId",
+        "name",
+        "visible",
+        "includeInAutoRange",
+        "order",
+        "mode",
+        "style"
+      ]
+    },
+    "drawObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "enum": [
+            "text",
+            "segment",
+            "line",
+            "arrow",
+            "callout",
+            "rectangle",
+            "range-x",
+            "range-y",
+            "marker",
+            "table"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "anchors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/anchor"
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "geometry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "directionX": {
+              "type": "number"
+            },
+            "directionY": {
+              "type": "number"
+            },
+            "widthPx": {
+              "type": "number",
+              "minimum": 16,
+              "maximum": 600000
+            },
+            "heightPx": {
+              "type": "number",
+              "minimum": 16,
+              "maximum": 1500000
+            }
+          },
+          "required": []
+        },
+        "text": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/textPart"
+          },
+          "maxItems": 1000
+        },
+        "style": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stroke": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "strokeWidthPt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 24
+            },
+            "dash": {
+              "enum": [
+                "solid",
+                "dash",
+                "dot",
+                "dash-dot"
+              ]
+            },
+            "strokeOpacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "fill": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "fillOpacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "fontSizePt": {
+              "type": "number",
+              "minimum": 6,
+              "maximum": 72
+            },
+            "fontFamily": {
+              "const": "Courier New"
+            },
+            "arrowHead": {
+              "enum": [
+                "none",
+                "start",
+                "end",
+                "both"
+              ]
+            },
+            "markerShape": {
+              "enum": [
+                "circle",
+                "square",
+                "triangle",
+                "diamond",
+                "cross",
+                "plus"
+              ]
+            },
+            "markerSizePt": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 32
+            }
+          },
+          "required": [
+            "stroke",
+            "strokeWidthPt",
+            "dash",
+            "strokeOpacity",
+            "fill",
+            "fillOpacity",
+            "fontSizePt",
+            "fontFamily",
+            "arrowHead",
+            "markerShape",
+            "markerSizePt"
+          ]
+        },
+        "zIndex": {
+          "type": "integer"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "table": {
+          "$ref": "#/$defs/diagramTable"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "name",
+        "anchors",
+        "geometry",
+        "text",
+        "style",
+        "zIndex",
+        "visible",
+        "locked"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "table"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "table"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "table"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "calculation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "kind": {
+          "enum": [
+            "linear-fit",
+            "polynomial-fit",
+            "exponential-fit",
+            "power-fit",
+            "savitzky-golay",
+            "moving-average",
+            "derivative",
+            "integral",
+            "interpolation",
+            "statistics",
+            "baseline",
+            "peaks",
+            "area"
+          ]
+        },
+        "sourceDatasetIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "minItems": 1
+        },
+        "resultDatasetId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parameters": {
+          "type": "object",
+          "maxProperties": 60,
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "null",
+              "array",
+              "object"
+            ]
+          }
+        },
+        "algorithmVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "valid",
+            "outdated",
+            "invalid"
+          ]
+        },
+        "summary": {
+          "type": "object",
+          "maxProperties": 60,
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "peaks": {
+              "type": "array",
+              "maxItems": 1000000,
+              "items": {
+                "$ref": "#/$defs/peakMeasurement"
+              }
+            }
+          }
+        },
+        "display": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "visible": {
+              "type": "boolean"
+            },
+            "stroke": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "label": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "visible",
+            "stroke",
+            "opacity",
+            "label"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "sourceDatasetIds",
+        "resultDatasetId",
+        "parameters",
+        "algorithmVersion",
+        "status",
+        "summary"
+      ]
+    },
+    "textPart": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "baseline": {
+          "enum": [
+            "normal",
+            "sub",
+            "super"
+          ]
+        },
+        "bold": {
+          "type": "boolean"
+        },
+        "italic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "text",
+        "baseline",
+        "bold",
+        "italic"
+      ]
+    },
+    "peakMeasurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "direction": {
+          "enum": [
+            "max",
+            "min"
+          ]
+        },
+        "prominence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "width": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "left": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "right": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "level": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "incomplete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "index",
+        "x",
+        "y",
+        "direction",
+        "prominence",
+        "width",
+        "left",
+        "right",
+        "level",
+        "incomplete"
+      ]
+    },
+    "diagramTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "size": {
+                "type": "number",
+                "minimum": 16,
+                "maximum": 30000
+              }
+            },
+            "required": [
+              "id",
+              "size"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 50
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "size": {
+                "type": "number",
+                "minimum": 16,
+                "maximum": 30000
+              }
+            },
+            "required": [
+              "id",
+              "size"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 20
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "text": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/textPart"
+                },
+                "minItems": 0,
+                "maxItems": 1000
+              },
+              "align": {
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ]
+              },
+              "vertical": {
+                "enum": [
+                  "top",
+                  "middle",
+                  "bottom"
+                ]
+              },
+              "fill": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "color": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "fontSizePt": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 6,
+                    "maximum": 72
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "align",
+              "vertical",
+              "fill",
+              "color",
+              "fontSizePt"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "merges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "row": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 49
+              },
+              "column": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 19
+              },
+              "rows": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              },
+              "columns": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              }
+            },
+            "required": [
+              "row",
+              "column",
+              "rows",
+              "columns"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 500
+        },
+        "padding": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "header": {
+          "type": "boolean"
+        },
+        "fill": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "headerFill": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "grid": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "visible": {
+              "type": "boolean"
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "widthPt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 24
+            },
+            "dash": {
+              "enum": [
+                "solid",
+                "dash",
+                "dot",
+                "dash-dot"
+              ]
+            },
+            "horizontal": {
+              "type": "boolean"
+            },
+            "vertical": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "visible",
+            "color",
+            "widthPt",
+            "dash",
+            "horizontal",
+            "vertical"
+          ]
+        },
+        "fillOpacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "version",
+        "rows",
+        "columns",
+        "cells",
+        "merges",
+        "padding",
+        "header",
+        "fill",
+        "headerFill",
+        "grid",
+        "fillOpacity"
+      ]
+    }
+  }
+}

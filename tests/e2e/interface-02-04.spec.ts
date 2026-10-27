@@ -1,23 +1,25 @@
+import {workspaceRecoveryPresent} from './helpers';
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {addPairs,createProject} from '../../src/domain/model';
 const header=(page:Page,name:string)=>page.locator('header').getByRole('button',{name,exact:true});
 async function load(page:Page,multi=false){let p=addPairs(createProject(),Array.from({length:5500},(_,x)=>({x,y:Math.sin(x/100)})),'Измерения');if(multi)p=addPairs(p,[{x:1,y:2}],'Second');await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'spectrum.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await expect.poll(async()=>{const chart=page.getByTestId('chart'),b=(await chart.boundingBox())!,v=(await chart.getAttribute('viewBox'))!.split(' ').map(Number);return v[2]===b.width&&v[3]===b.height}).toBe(true);return p}
-async function saved(page:Page){const wait=page.waitForEvent('download');await header(page,'Сохранить').click();return JSON.parse(await readFile((await(await wait).path())!,'utf8'))}
+async function saved(page:Page){const wait=page.waitForEvent('download');await header(page,'Сохранить').click();return await downloadedGraph(await readFile((await(await wait).path())!))}
 test('completing an import backup does not close a panel opened in the new tab',async({page})=>{
  await page.addInitScript(()=>{
   const NativeWorker=Worker,w=window as unknown as {finishImportBackup?:()=>void};let held=false;
   window.Worker=class extends NativeWorker{
    private serialization:boolean;
-   constructor(url:string|URL,options?:WorkerOptions){super(url,options);this.serialization=String(url).includes('serialize.worker')}
-   override postMessage(message:unknown,transfer:Transferable[]|StructuredSerializeOptions=[]){const send=()=>super.postMessage(message,transfer as Transferable[]);if(this.serialization&&!held&&message&&typeof message==='object'&&'pretty'in message&&message.pretty===false){held=true;w.finishImportBackup=send}else send()}
+   constructor(url:string|URL,options?:WorkerOptions){super(url,options);this.serialization=String(url).includes('workspace.worker')}
+   override postMessage(message:unknown,transfer:Transferable[]|StructuredSerializeOptions=[]){const send=()=>super.postMessage(message,transfer as Transferable[]);if(this.serialization&&!held&&message&&typeof message==='object'&&'kind'in message&&message.kind==='save'){held=true;w.finishImportBackup=send}else send()}
   };
  });
  await load(page);await header(page,'Новый проект').click();await page.getByLabel('Исходный текст',{exact:true}).fill('X Y\n1 2\n3 4');await page.getByRole('button',{name:'Построить',exact:true}).click();
  await page.waitForFunction(()=>!!(window as unknown as {finishImportBackup?:()=>void}).finishImportBackup);
  await header(page,'Таблица').click();await expect(page.getByRole('dialog',{name:'Таблица данных',exact:true})).toBeVisible();
  await page.evaluate(()=>(window as unknown as {finishImportBackup:()=>void}).finishImportBackup());
- await expect.poll(()=>page.evaluate(()=>!!localStorage.getItem('apio-graph.recovery.v1'))).toBe(true);
+ await expect.poll(()=>workspaceRecoveryPresent(page)).toBe(true);
  await expect(page.getByRole('dialog',{name:'Таблица данных',exact:true})).toBeVisible();
 });
 test('one click opens graph properties and hidden measurements and legend remain independently editable',async({page})=>{

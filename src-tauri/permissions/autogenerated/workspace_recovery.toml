@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workspace-recovery"
+description = "Enables the workspace_recovery command without any pre-configured scope."
+commands.allow = ["workspace_recovery"]
+
+[[permission]]
+identifier = "deny-workspace-recovery"
+description = "Denies the workspace_recovery command without any pre-configured scope."
+commands.deny = ["workspace_recovery"]

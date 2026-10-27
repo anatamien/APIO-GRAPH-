@@ -25,7 +25,7 @@ interface CoordinateScale {(value:number):number;invert:(value:number)=>number}
 export interface Coordinates {x:CoordinateScale;y:CoordinateScale;left:number;right:number;top:number;bottom:number;width:number;height:number;xTicks:number[];yTicks:number[];xLabelWidth:number}
 const coordinateCache=new WeakMap<Viewport,Map<string,Coordinates>>();
 export function createCoordinates(p:ProjectDocument,width:number,height:number):Coordinates{
-  const key=JSON.stringify([width,height,p.page.paddingPx,...Object.values(p.viewport),...[p.axes.x,p.axes.y].flatMap(a=>[a.tickMode,a.tickStep,a.tickOrigin,a.numberFormat,a.precision])]);
+  const key=JSON.stringify([width,height,p.page.paddingPx,...Object.values(p.viewport),p.extensions.plotFrame,...[p.axes.x,p.axes.y].flatMap(a=>[a.tickMode,a.tickStep,a.tickOrigin,a.numberFormat,a.precision])]);
   let cache=coordinateCache.get(p.viewport);const cached=cache?.get(key);if(cached)return cached;
   const pad=p.page.paddingPx;
   const xTicks=axisTicks(p.axes.x,p.viewport.xMin,p.viewport.xMax),yTicks=axisTicks(p.axes.y,p.viewport.yMin,p.viewport.yMax);
@@ -34,7 +34,8 @@ export function createCoordinates(p:ProjectDocument,width:number,height:number):
   // Courier New has fixed advance; reserve its measured CSS-size equivalent
   // in both screen and standalone export without depending on DOM layout.
   const labelWidth=(labels:string[])=>Math.max(0,...labels.map(label=>label.length*7.21));
-  const xLabelWidth=labelWidth(xLabels),left=Math.max(62,pad,44+labelWidth(yLabels)),right=Math.max(left+10,width-Math.max(22,pad/2,12+xLabelWidth/2)),top=Math.max(22,pad/2),bottom=Math.max(top+10,height-Math.max(54,pad));
+  const xLabelWidth=labelWidth(xLabels),defaultLeft=Math.max(62,pad,44+labelWidth(yLabels)),defaultRight=Math.max(defaultLeft+10,width-Math.max(22,pad/2,12+xLabelWidth/2)),defaultTop=Math.max(22,pad/2),defaultBottom=Math.max(defaultTop+10,height-Math.max(54,pad));
+  const f=p.extensions.plotFrame as number[]|undefined,left=f?f[0]*width:defaultLeft,right=f?f[2]*width:defaultRight,top=f?f[1]*height:defaultTop,bottom=f?f[3]*height:defaultBottom;
   const linear=(min:number,max:number,start:number,end:number)=>{const unit=Math.max(Math.abs(min),Math.abs(max))||1;const scale=scaleLinear().domain([min/unit,max/unit]).range([start,end]);return Object.assign((value:number)=>scale(value/unit),{invert:(value:number)=>scale.invert(value)*unit})};
   const x=linear(p.viewport.xMin,p.viewport.xMax,left,right),y=linear(p.viewport.yMin,p.viewport.yMax,bottom,top);
   const result={x,y,left,right,top,bottom,width,height,xTicks,yTicks,xLabelWidth};if(!cache){cache=new Map();coordinateCache.set(p.viewport,cache)}if(cache.size>=8)cache.delete(cache.keys().next().value!);cache.set(key,result);return result;

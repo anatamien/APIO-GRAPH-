@@ -1,6 +1,6 @@
 /** All native file access is mediated by Rust commands and native dialogs. */
 import type {InvokeArgs,InvokeOptions} from '@tauri-apps/api/core';
-export interface OpenedFile { name: string; path: string; bytes: Uint8Array }
+export interface OpenedFile { name: string; path: string; bytes: Uint8Array;origin?:boolean;workspaceSize?:number }
 export interface Recovery { text: string; path: string | null }
 
 const RECOVERY_KEY = 'apio-graph.recovery.v1';
@@ -48,13 +48,13 @@ async function invoke<T>(command: string, args?: InvokeArgs,options?:InvokeOptio
 const NATIVE_BLOCK_BYTES=256*1024;
 let nativeWrites:Promise<unknown>=Promise.resolve();
 /** Bound each WebView IPC copy; Rust validates and atomically writes only a complete upload. */
-function writeNative<T>(command:string,bytes:Uint8Array,headers:Record<string,string>,signal?:AbortSignal):Promise<T>{
+function writeNative<T>(command:string,bytes:Uint8Array,headers:Record<string,string>,signal?:AbortSignal,limit=MAX_FILE_BYTES):Promise<T>{
   const run=async()=>{
-    signal?.throwIfAborted();if(bytes.byteLength>MAX_FILE_BYTES)throw new Error('FILE_TOO_LARGE');
+    signal?.throwIfAborted();if(bytes.byteLength>limit)throw new Error('FILE_TOO_LARGE');
     if(bytes.byteLength<=NATIVE_BLOCK_BYTES)return invoke<T>(command,bytes,{headers});
     let id:number|undefined;
     try{
-      id=await invoke<number>('begin_binary_transfer',{length:bytes.byteLength});
+      id=await invoke<number>('begin_binary_transfer',{length:bytes.byteLength,kind:headers['x-apio-workspace']==='1'?'workspace':command==='workspace_recovery'?'workspace-recovery':null});
       if(!Number.isSafeInteger(id)||id<=0)throw new Error('FILE_INVALID_TRANSFER');
       for(let offset=0;offset<bytes.byteLength;offset+=NATIVE_BLOCK_BYTES){
         signal?.throwIfAborted();const end=Math.min(bytes.byteLength,offset+NATIVE_BLOCK_BYTES);
@@ -78,7 +78,7 @@ function nativeFile(input:unknown):OpenedFile|null{
   let metadata:unknown;try{metadata=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes.subarray(0,end)))}catch{throw new Error('FILE_INVALID_RESPONSE')}
   if(!metadata||typeof metadata!=='object'||!('name'in metadata)||typeof metadata.name!=='string'||!('path'in metadata)||typeof metadata.path!=='string')throw new Error('FILE_INVALID_RESPONSE');
   const data=bytes.subarray(end+1);if(data.byteLength>MAX_FILE_BYTES)throw new Error('FILE_TOO_LARGE');
-  return {name:metadata.name,path:metadata.path,bytes:data};
+  return {name:metadata.name,path:metadata.path,bytes:data,...('origin'in metadata&&metadata.origin===true?{origin:true}:{}),...('workspaceSize'in metadata&&typeof metadata.workspaceSize==='number'&&Number.isSafeInteger(metadata.workspaceSize)&&metadata.workspaceSize>=0&&metadata.workspaceSize<=512*1024*1024?{workspaceSize:metadata.workspaceSize}:{})};
 }
 
 function filename(path: string | null | undefined, fallback: string): string {
@@ -104,7 +104,7 @@ export async function openFile(kind: 'all' | 'project' | 'data' = 'all'): Promis
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = kind==='project'?'.aph':kind==='data'?'.txt,.csv,.tsv':'.aph,.txt,.csv,.tsv';
+    input.accept = kind==='project'?'.aph':kind==='data'?'.txt,.csv,.tsv':'.aph,.txt,.csv,.tsv,.opj,.opju,.org';
     input.hidden = true;
     document.body.append(input);
     input.addEventListener('cancel', () => { input.remove(); resolve(null); }, { once: true });
@@ -112,7 +112,7 @@ export async function openFile(kind: 'all' | 'project' | 'data' = 'all'): Promis
       const file = input.files?.[0];
       input.remove();
       if (!file) { resolve(null); return; }
-      if (file.size > MAX_FILE_BYTES) { reject(new Error('FILE_TOO_LARGE')); return; }
+      if (file.size > (file.name.toLowerCase().endsWith('.aph')?512*1024*1024:MAX_FILE_BYTES)) { reject(new Error('FILE_TOO_LARGE')); return; }
       file.arrayBuffer().then(bytes => resolve({ name: file.name, path: file.name, bytes: new Uint8Array(bytes) }), reject);
     }, { once: true });
     input.click();
@@ -135,6 +135,13 @@ export async function saveImage(bytes: Uint8Array, extension: string,signal?:Abo
   signal?.throwIfAborted();
   if (isDesktop()) return writeNative('save_image',bytes,{'x-apio-extension':extension},signal);
   return download(bytes, `chart.${extension}`, mime[extension]);
+}
+
+export async function saveDataTable(bytes:Uint8Array,extension:'csv'|'tsv'):Promise<string|null>{
+  if(extension!=='csv'&&extension!=='tsv')throw new Error('EXPORT_UNSUPPORTED_FORMAT');
+  if(bytes.byteLength>MAX_FILE_BYTES)throw new Error('FILE_TOO_LARGE');
+  if(isDesktop())return writeNative('save_data_table',bytes,{'x-apio-extension':extension});
+  return download(bytes,`peaks.${extension}`,extension==='csv'?'text/csv;charset=utf-8':'text/tab-separated-values;charset=utf-8');
 }
 
 export async function writeRecovery(input: string|Uint8Array, path: string | null): Promise<void> {
@@ -192,3 +199,20 @@ export async function onDroppedFile(
     })().catch(error => { if (onError) onError(error); });
   });
 }
+
+export async function readWorkspaceFile(file:OpenedFile,signal?:AbortSignal):Promise<Uint8Array>{
+ if(file.workspaceSize===undefined)return file.bytes;
+ const bytes=new Uint8Array(file.workspaceSize);for(let offset=0;offset<bytes.length;offset+=1024*1024){signal?.throwIfAborted();const count=Math.min(1024*1024,bytes.length-offset),part=new Uint8Array(await invoke<ArrayBuffer>('workspace_chunk',{path:file.path,offset,count}));if(part.length!==count)throw new Error('FILE_INCOMPLETE_TRANSFER');bytes.set(part,offset)}return bytes;
+}
+export async function saveWorkspaceFile(bytes:Uint8Array,path:string|null,saveAs:boolean,signal?:AbortSignal):Promise<string|null>{
+ signal?.throwIfAborted();if(bytes.length>512*1024*1024)throw new Error('FILE_TOO_LARGE');
+ if(isDesktop())return writeNative('save_project',bytes,{'x-apio-path':encodeURIComponent(path??''),'x-apio-save-as':saveAs?'1':'0','x-apio-workspace':'1'},signal,512*1024*1024);
+ return download(bytes,filename(path,'workspace.aph').replace(/(?:\.aph)?$/i,'.aph'),'application/vnd.apio-graph.workspace+zip');
+}
+
+export async function writeWorkspaceRecoveryBytes(bytes:Uint8Array){await writeNative('workspace_recovery',bytes,{'x-apio-action':'write'},undefined,512*1024*1024+1024*1024+12)}
+export async function readWorkspaceRecoveryBytes():Promise<Uint8Array|null>{const raw=new Uint8Array(await invoke<ArrayBuffer>('workspace_recovery',new Uint8Array(),{headers:{'x-apio-action':'size'}}));if(raw.length!==8)throw new Error('RECOVERY_INVALID');const size=new DataView(raw.buffer,raw.byteOffset,8).getBigUint64(0,true);if(size===0n)return null;if(size>BigInt(512*1024*1024+1024*1024+12))throw new Error('FILE_TOO_LARGE');const bytes=new Uint8Array(Number(size));for(let offset=0;offset<bytes.length;offset+=1024*1024){const count=Math.min(1024*1024,bytes.length-offset),part=new Uint8Array(await invoke<ArrayBuffer>('workspace_recovery',new Uint8Array(),{headers:{'x-apio-action':'read','x-apio-offset':String(offset),'x-apio-count':String(count)}}));if(part.length!==count)throw new Error('RECOVERY_INVALID');bytes.set(part,offset)}return bytes}
+export async function clearWorkspaceRecoveryBytes(){await invoke('workspace_recovery',new Uint8Array(),{headers:{'x-apio-action':'clear'}})}
+
+/** Passive binary extraction: explicit Save dialog, no execution and no overwrite grant reuse. */
+export async function savePassiveBytes(bytes:Uint8Array,extension:'bin'|'opj'|'opju'|'org'|'png'|'jpg'|'gif'|'bmp'|'pdf'|'txt',name='Origin-source'):Promise<void>{if(bytes.length>MAX_FILE_BYTES)throw new Error('FILE_TOO_LARGE');if(isDesktop())await writeNative('save_passive_bytes',bytes,{'x-apio-extension':extension});else download(bytes,name.replace(/[\\/\x00-\x1f]/g,'_').replace(/\.(bin|opj|opju|org)$/i,'')+'.'+extension,'application/octet-stream')}

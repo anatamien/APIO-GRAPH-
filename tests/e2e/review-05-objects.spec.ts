@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {addPairs,createProject,makeObject} from '../../src/domain/model';
@@ -6,7 +7,7 @@ test('05.3 F9 fits complete rotated labels and callouts and leaves axes, anchors
  const p=addPairs(createProject(),[{x:1,y:1},{x:2,y:3}],'Raw');p.objects=[makeObject('text',[{mode:'data',x:-2,y:20}],'Peak label with units'),makeObject('callout',[{mode:'data',x:2,y:3},{mode:'data',x:8,y:14}],'Peak\ncallout')];p.extensions.textRotation={[p.objects[0].id]:25};
  await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'fit-annotations.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await page.keyboard.press('F9');const chart=page.getByTestId('chart'),box=(await chart.boundingBox())!;
  for(const o of p.objects){await expect(page.locator(`[data-object="${o.id}"] text`)).toBeVisible();await expect.poll(async()=>{const b=(await page.locator(`[data-object="${o.id}"]`).boundingBox())!;return b.x>box.x+10&&b.y>box.y+10&&b.x+b.width<box.x+box.width-10&&b.y+b.height<box.y+box.height-10}).toBe(true)}
- await expect(page.locator('header').getByRole('button',{name:'Отменить',exact:true})).toBeDisabled();const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();const saved=JSON.parse(await readFile((await(await pending).path())!,'utf8'));for(const field of ['datasets','axes','objects','extensions'] as const)expect(saved[field]).toEqual(p[field]);await page.screenshot({path:info.outputPath('f9-visible-annotations.png')});
+ await expect(page.locator('header').getByRole('button',{name:'Отменить',exact:true})).toBeDisabled();const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();const saved=await downloadedGraph(await readFile((await(await pending).path())!));for(const field of ['datasets','axes','objects','extensions'] as const)expect(saved[field]).toEqual(p[field]);await page.screenshot({path:info.outputPath('f9-visible-annotations.png')});
 });
 
 test('05.7 all objects remain accessible when hidden, locked or outside the canvas and belong to their tab',async({page},info)=>{

@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {enterEditor} from './helpers';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
@@ -6,7 +7,7 @@ import {createProject,addPairs,makeObject,type ProjectDocument} from '../../src/
 async function open(page:Page,p=addPairs(createProject(),[{x:0,y:0},{x:10,y:10}],'Source')){
  p.series=p.series.map(s=>({...s,mode:'line-points',style:{...s.style,markerVisible:true}}));p.legend.visible=false;await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'ui.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await expect(page.locator('.welcome-screen')).toHaveCount(0);return p;
 }
-async function saved(page:Page):Promise<ProjectDocument>{const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return JSON.parse(await readFile((await (await pending).path())!,'utf8'))}
+async function saved(page:Page):Promise<ProjectDocument>{const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return await downloadedGraph(await readFile((await (await pending).path())!))}
 async function text(page:Page,value:string,x=350,y=240){await page.keyboard.press('t');const box=(await page.getByTestId('chart').boundingBox())!;await page.mouse.click(box.x+x,box.y+y);await page.locator('.inline-text textarea').fill(value);await page.locator('.inline-text').getByRole('button',{name:'Применить'}).click()}
 
 test('welcome hides the canvas; both project creation routes and project opening work',async({page})=>{

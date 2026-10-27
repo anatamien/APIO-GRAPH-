@@ -5,7 +5,7 @@ import {autoRange} from './geometry';
  * corresponding view still follows its previous automatic range. F9 is explicit.
  */
 export function editViewport(before:ProjectDocument,next:ProjectDocument,label:string):ProjectDocument{
- if(next===before||next.datasets===before.datasets||label==='ImportBatch')return next;
+ if(next===before||next.datasets===before.datasets||['ImportBatch','recalculate','UpdateCalculation','RemoveDataNode'].includes(label))return next;
  const old=autoRange(before),range=autoRange(next),view={...next.viewport};
  for(const axis of ['x','y'] as const){
   const min=axis==='x'?'xMin':'yMin',max=axis==='x'?'xMax':'yMax';

@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {enterEditor} from './helpers';
 import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
@@ -26,7 +27,7 @@ async function savedProject(page: Page): Promise<ProjectDocument> {
   const download = await pending
   const path = await download.path()
   expect(path).toBeTruthy()
-  return JSON.parse(await readFile(path!, 'utf8')) as ProjectDocument
+  return await downloadedGraph(await readFile(path!)) as ProjectDocument
 }
 
 async function pasteRange(target: Locator, text: string) {

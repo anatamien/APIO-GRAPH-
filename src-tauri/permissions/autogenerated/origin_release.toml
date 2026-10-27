@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-origin-release"
+description = "Enables the origin_release command without any pre-configured scope."
+commands.allow = ["origin_release"]
+
+[[permission]]
+identifier = "deny-origin-release"
+description = "Denies the origin_release command without any pre-configured scope."
+commands.deny = ["origin_release"]

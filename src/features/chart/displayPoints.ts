@@ -1,27 +1,30 @@
-import type {Point} from '../../domain/model';
+import type {Point,XY} from '../../domain/model';
 interface Level {size:number;indices:Int32Array}
-interface Prepared {direction:-1|0|1;verticalDirection:-1|0|1;xMin:number;xMax:number;levels:Level[];selections:Map<string,Point[]>;markerTiles:Map<string,Point[]>}
-const prepared=new WeakMap<Point[],Prepared>();
+export interface DisplayIndex {direction:-1|0|1;verticalDirection:-1|0|1;strict:boolean;xMin:number;xMax:number;levels:Level[]}
+interface Prepared extends DisplayIndex {selections:Map<string,XY[]>;markerTiles:Map<string,XY[]>}
+const prepared=new WeakMap<XY[],Prepared>();
+export const readDisplayIndex=(points:readonly XY[])=>prepared.get(points as XY[]);
+export function adoptDisplayIndex(points:XY[],index:DisplayIndex){prepared.set(points,{...index,selections:new Map(),markerTiles:new Map()})}
 
-function summary(points:Point[],indices:number[]):number[]{
+function summary(points:XY[],indices:number[]):number[]{
  let lo=indices[0],hi=lo,lx=lo,hx=lo;
  for(const j of indices){if(points[j].y<points[lo].y)lo=j;if(points[j].y>points[hi].y)hi=j;if(points[j].x<points[lx].x)lx=j;if(points[j].x>points[hx].x)hx=j}
  return [indices[0],lo,hi,lx,hx,indices.at(-1)!];
 }
-function prepare(points:Point[]):Prepared{
+function prepare(points:XY[]):Prepared{
  const cached=prepared.get(points);if(cached)return cached;
- let increasing=true,decreasing=true,up=true,down=true,xMin=points[0].x,xMax=xMin;for(let i=1;i<points.length;i++){if(points[i].x<points[i-1].x)increasing=false;if(points[i].x>points[i-1].x)decreasing=false;if(points[i].y<points[i-1].y)up=false;if(points[i].y>points[i-1].y)down=false;xMin=Math.min(xMin,points[i].x);xMax=Math.max(xMax,points[i].x)}
+ let increasing=true,decreasing=true,strict=true,up=true,down=true,xMin=points[0].x,xMax=xMin;for(let i=1;i<points.length;i++){if(points[i].x<points[i-1].x)increasing=false;if(points[i].x>points[i-1].x)decreasing=false;if(points[i].x===points[i-1].x)strict=false;if(points[i].y<points[i-1].y)up=false;if(points[i].y>points[i-1].y)down=false;xMin=Math.min(xMin,points[i].x);xMax=Math.max(xMax,points[i].x)}
  const levels:Level[]=[];
  let size=8,indices=new Int32Array(Math.ceil(points.length/size)*6);
  for(let i=0;i<points.length;i+=size){const part=Array.from({length:Math.min(size,points.length-i)},(_,j)=>i+j);indices.set(summary(points,part),i/size*6)}
  levels.push({size,indices});
  while(Math.ceil(points.length/size)>1){const next=new Int32Array(Math.ceil(points.length/(size*2))*6);for(let i=0;i<indices.length;i+=12){const part=[...new Set(indices.slice(i,i+12))].sort((a,b)=>a-b);next.set(summary(points,part),i/12*6)}size*=2;indices=next;levels.push({size,indices})}
- const result:Prepared={direction:increasing?1:decreasing?-1:0,verticalDirection:up?1:down?-1:0,xMin,xMax,levels,selections:new Map(),markerTiles:new Map()};prepared.set(points,result);return result;
+ const result:Prepared={direction:increasing?1:decreasing?-1:0,verticalDirection:up?1:down?-1:0,strict,xMin,xMax,levels,selections:new Map(),markerTiles:new Map()};prepared.set(points,result);return result;
 }
-function select(points:Point[],start:number,end:number,limit:number,cache:Prepared):Point[]{
+function select(points:XY[],start:number,end:number,limit:number,cache:Prepared):XY[]{
  if(start===0&&end===points.length&&points.length<=limit)return points;
  const key=`${start}:${end}:${limit}`,cached=cache.selections.get(key);if(cached)return cached;
- let result:Point[];
+ let result:XY[];
  if(end-start<=limit)result=points.slice(start,end);
  else{
   const ideal=(end-start)*6/limit,level=cache.levels.find(v=>v.size>=ideal)??cache.levels.at(-1)!,chosen:number[]=[];
@@ -33,12 +36,16 @@ function select(points:Point[],start:number,end:number,limit:number,cache:Prepar
  if(cache.selections.size>=8)cache.selections.delete(cache.selections.keys().next().value!);cache.selections.set(key,result);return result;
 }
 /** Extrema at immutable acquisition-order levels, without replacing source arrays. */
-export function displayPoints(points:Point[],limit:number):Point[]{
+export function displayPoints(points:Point[],limit:number):Point[];
+export function displayPoints(points:XY[],limit:number):XY[];
+export function displayPoints(points:XY[],limit:number):XY[]{
  limit=Math.max(6,Math.floor(limit));if(points.length<=limit)return points;
  return select(points,0,points.length,limit,prepare(points));
 }
 /** Monotonic X supports exact range lookup, including neighbours across clip edges. */
-export function visiblePoints(points:Point[],min:number,max:number,limit:number,margin=0):Point[]{
+export function visiblePoints(points:Point[],min:number,max:number,limit:number,margin?:number):Point[];
+export function visiblePoints(points:XY[],min:number,max:number,limit:number,margin?:number):XY[];
+export function visiblePoints(points:XY[],min:number,max:number,limit:number,margin=0):XY[]{
  if(!points.length)return points;limit=Math.max(6,Math.floor(limit));
  const cache=prepare(points);if(!cache.direction)return select(points,0,points.length,limit,cache);
  const direction=cache.direction,lower=direction===1?min:-max,upper=direction===1?max:-min;
@@ -60,7 +67,9 @@ export function visiblePoints(points:Point[],min:number,max:number,limit:number,
  * cluster enters the edge. Each tile retains acquisition-order extrema; sparse
  * tiles restore every original point independently of neighbouring dense tiles.
  */
-export function visibleMarkerPoints(points:Point[],min:number,max:number,limit:number,margin=0,vertical?:readonly [number,number]):Point[]{
+export function visibleMarkerPoints(points:Point[],min:number,max:number,limit:number,margin?:number,vertical?:readonly [number,number]):Point[];
+export function visibleMarkerPoints(points:XY[],min:number,max:number,limit:number,margin?:number,vertical?:readonly [number,number]):XY[];
+export function visibleMarkerPoints(points:XY[],min:number,max:number,limit:number,margin=0,vertical?:readonly [number,number]):XY[]{
  if(!points.length)return points;
  const xMin=min,xMax=max;
  const cache=prepare(points),useY=vertical&&cache.verticalDirection!==0&&cache.xMax-cache.xMin<(max-min)/32&&cache.xMin>=min-(max-min)*margin&&cache.xMax<=max+(max-min)*margin;
@@ -78,7 +87,7 @@ export function visibleMarkerPoints(points:Point[],min:number,max:number,limit:n
  if(!Number.isSafeInteger(first)||!Number.isSafeInteger(last)||last-first>256)return fallback();
  const bound=(target:number)=>{let a=0,b=points.length;while(a<b){const mid=Math.floor((a+b)/2),value=points[mid][axis]*direction;if(value<target||(direction===-1&&value===target))a=mid+1;else b=mid}return a};
  const bounds=(a:number,b:number)=>[bound(direction===1?a:-b),bound(direction===1?b:-a)] as const;
- const baseBudget=Math.max(6,Math.floor(limit*(tile/span))),result:Point[]=[];
+ const baseBudget=Math.max(6,Math.floor(limit*(tile/span))),result:XY[]=[];
  for(let index=0;index<=last-first;index++){
   const i=direction===1?first+index:last-index;
   const key=`${axis}:${tile}:${i}:${limit/span}`;let selected=cache.markerTiles.get(key);

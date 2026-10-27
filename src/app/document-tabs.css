@@ -1,0 +1,14 @@
+.document-tabs{flex:0 1 auto;min-width:85px}
+.document-tabs .tab-list{flex:0 1 auto;min-width:0}
+.document-tabs .document-tab{flex:0 1 170px;min-width:90px;max-width:210px}
+.document-tabs .project-name{flex:1 1 auto;gap:0}
+.document-tabs .tab-base{min-width:0;max-width:none}
+.document-tabs .tab-extension{flex:none;max-width:none;overflow:visible}
+.document-tabs .tab-scroll{flex:none;min-width:20px;min-height:28px;padding:1px;border-radius:5px}
+.document-tabs .all-graphs-button{flex:none;min-width:28px;min-height:30px;padding:4px}
+.tabs-dismiss{position:fixed;inset:44px 0 0;z-index:120;cursor:default}
+.all-graphs-menu{position:absolute;left:8px;top:4px;width:min(360px,calc(100vw - 16px));padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.all-graphs-menu input{width:100%;min-height:34px;padding:7px 10px;border:1px solid var(--field-border);border-radius:7px;background:var(--field)}
+.all-graphs-menu [role=listbox]{max-height:min(440px,65vh);overflow:auto;margin-top:8px}
+.all-graphs-menu [role=option]{display:flex;justify-content:space-between;text-align:left;width:100%;min-height:32px;overflow-wrap:anywhere;font-size:12px}
+.all-graphs-menu [role=option][aria-selected=true]{background:var(--hover);color:var(--text)}

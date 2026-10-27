@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-origin-cells"
+description = "Enables the origin_cells command without any pre-configured scope."
+commands.allow = ["origin_cells"]
+
+[[permission]]
+identifier = "deny-origin-cells"
+description = "Denies the origin_cells command without any pre-configured scope."
+commands.deny = ["origin_cells"]

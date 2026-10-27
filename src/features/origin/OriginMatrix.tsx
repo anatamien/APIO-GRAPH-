@@ -1,0 +1,27 @@
+import {useNumericCharacterWidth} from './tableSizing';
+import {numericColumnMetrics} from './columnMetrics';
+import {useEffect,useRef,useState} from 'react';
+import type {T} from '../../app/controls';
+import type {OriginTabState} from './history';
+import type {OriginNode} from './model';
+import {originResourceSlice} from './platform';
+export function OriginMatrix({origin,node,t}:{origin:OriginTabState;node:OriginNode;t:T}){
+ const rows=Number(node.properties.rows),columns=Number(node.properties.columns),values=String(node.properties.values??''),tags=String(node.properties.tags??''),[top,setTop]=useState(0),[block,setBlock]=useState(0),[columnPage,setColumnPage]=useState(0),[cells,setCells]=useState<{v:DataView;k:Uint8Array;start:number;firstColumn:number;stride:number}|null>(null),[error,setError]=useState(''),scroll=useRef<HTMLDivElement>(null),offset=block*100000,start=offset+Math.max(0,Math.floor(top/30)-3),firstColumn=columnPage*16,loadedStart=Math.floor(start/20)*20,last=Math.min(rows,offset+100000,start+45),valid=Number.isSafeInteger(rows)&&rows>0&&Number.isSafeInteger(columns)&&columns>0&&columns<=100000&&origin.model.resources.some(r=>r.id===values&&r.size===rows*columns*8)&&origin.model.resources.some(r=>r.id===tags&&r.size===rows*columns);
+ const [numericLongest,setNumericLongest]=useState('');const characterWidth=useNumericCharacterWidth(scroll,columnPage),numericWidth=Math.max(88,Math.ceil(numericLongest.length*characterWidth)+28);
+ useEffect(()=>{if(!valid)return;const cancel=new AbortController();void numericColumnMetrics(origin,[{nodeId:node.id,values,tags,rowCount:rows*columns,role:'unknown',originType:'matrix'}],cancel.signal,(_id,text)=>{if(!cancel.signal.aborted)setNumericLongest(text)}).catch(()=>{});return()=>cancel.abort()},[origin,node.id,values,tags,rows,columns,valid]);
+ useEffect(()=>{
+  if(!valid)return;let alive=true;setCells(null);setError('');
+  const rowCount=Math.min(65,rows-loadedStart),count=rowCount*columns;
+  const load=async()=>{
+   if(count*8<=1024*1024){const [v,k]=await Promise.all([originResourceSlice(origin,values,loadedStart*columns*8,count*8),originResourceSlice(origin,tags,loadedStart*columns,count)]);return {v:new DataView(v.buffer,v.byteOffset,v.byteLength),k,start:loadedStart,firstColumn:0,stride:columns}}
+   // Wide matrices fetch only the visible column page, with bounded IPC concurrency.
+   const stride=Math.min(16,columns-firstColumn),v=new Uint8Array(rowCount*stride*8),k=new Uint8Array(rowCount*stride);let next=0;
+   await Promise.all(Array.from({length:Math.min(4,rowCount)},async()=>{while(alive){const row=next++;if(row>=rowCount)return;const at=(loadedStart+row)*columns+firstColumn,[part,kind]=await Promise.all([originResourceSlice(origin,values,at*8,stride*8),originResourceSlice(origin,tags,at,stride)]);v.set(part,row*stride*8);k.set(kind,row*stride)}}));
+   return {v:new DataView(v.buffer),k,start:loadedStart,firstColumn,stride};
+  };
+  void load().then(value=>{if(alive)setCells(value)}).catch(e=>{if(alive)setError(String(e))});return()=>{alive=false};
+ },[origin,loadedStart,firstColumn,columns,rows,values,tags,valid]);
+ if(!valid)return <div className="origin-object-summary"><p>{t('originRawOnly')}</p><p>{Number.isFinite(rows)?rows:'?'} × {Number.isFinite(columns)?columns:'?'}</p></div>;
+ const changeBlock=(n:number)=>{setBlock(n);setTop(0);if(scroll.current)scroll.current.scrollTop=0};
+ return <><div className="origin-table-meta">{rows.toLocaleString()} {t('originRows')} · {columns.toLocaleString()} {t('originColumns')}<div className="origin-column-paging">{rows>100000&&<><button disabled={!block} onClick={()=>changeBlock(block-1)}>↑</button><button disabled={(block+1)*100000>=rows} onClick={()=>changeBlock(block+1)}>↓</button></>}<button disabled={!columnPage} onClick={()=>setColumnPage(p=>p-1)}>‹</button><span>{firstColumn+1}–{Math.min(columns,firstColumn+16)}</span><button disabled={firstColumn+16>=columns} onClick={()=>setColumnPage(p=>p+1)}>›</button></div></div>{error&&<p role="alert" className="origin-message">{error}</p>}<div ref={scroll} className="origin-table-scroll" onScroll={e=>setTop(e.currentTarget.scrollTop)}><table className="origin-fitted-table origin-matrix-table" style={{width:52+numericWidth*Math.min(16,columns-firstColumn)}} aria-label={t('table')}><colgroup><col style={{width:52}}/>{Array.from({length:Math.min(16,columns-firstColumn)},(_,i)=><col key={i} style={{width:numericWidth}}/>)}</colgroup><thead><tr><th>#</th>{Array.from({length:Math.min(16,columns-firstColumn)},(_,i)=><th key={i}>{firstColumn+i+1}</th>)}</tr></thead><tbody>{start>offset&&<tr aria-hidden="true" style={{height:(start-offset)*30}}><td colSpan={17}/></tr>}{Array.from({length:Math.max(0,last-start)},(_,i)=>start+i).map(row=><tr key={row}><th>{row+1}</th>{Array.from({length:Math.min(16,columns-firstColumn)},(_,i)=>{const at=(row-(cells?.start??0))*(cells?.stride??0)+firstColumn+i-(cells?.firstColumn??0),kind=cells?.k[at],value=cells&&at>=0&&at*8+8<=cells.v.byteLength?cells.v.getFloat64(at*8,true):undefined;return <td key={i} data-kind={(kind??0)&127?'missing':'number'}>{kind===1?'—':value===undefined?'':kind!==0?'?':!Number.isFinite(value)?`0x${cells!.v.getBigUint64(at*8,true).toString(16)}`:Object.is(value,-0)?'−0':String(value)}</td>})}</tr>)}{last<Math.min(rows,offset+100000)&&<tr aria-hidden="true" style={{height:(Math.min(rows,offset+100000)-last)*30}}><td colSpan={17}/></tr>}</tbody></table></div></>;
+}

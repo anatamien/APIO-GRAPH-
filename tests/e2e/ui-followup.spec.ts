@@ -1,8 +1,9 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {addPairs,createProject,makeObject,type ProjectDocument} from '../../src/domain/model';
 async function open(page:Page,p=addPairs(createProject(),[{x:2,y:2},{x:6,y:6}],'Source')){p.series=p.series.map(s=>({...s,mode:'line-points',style:{...s.style,markerVisible:true}}));p.legend.visible=false;await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'followup.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await expect(page.getByTestId('chart')).toBeVisible();return p}
-async function save(page:Page):Promise<ProjectDocument>{const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return JSON.parse(await readFile((await(await pending).path())!,'utf8'))}
+async function save(page:Page):Promise<ProjectDocument>{const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();return await downloadedGraph(await readFile((await(await pending).path())!))}
 test('launch has no editor chrome; header plus starts data input in the editor and the bottom bar stays absent',async({page})=>{
  await page.goto('/');await expect(page.locator('.welcome-screen')).toBeVisible();await expect(page.locator('.app-header')).toHaveCount(0);await expect(page.getByTestId('chart')).toHaveCount(0);await expect(page.locator('footer')).toHaveCount(0);
  await open(page);await expect(page.locator('.brand')).toHaveCount(0);await expect(page.locator('header').getByRole('button',{name:'Найти команду',exact:true})).toHaveCount(0);await expect(page.locator('.file-menu-button')).toHaveCount(0);await expect(page.locator('.canvas-hint')).toHaveCount(0);

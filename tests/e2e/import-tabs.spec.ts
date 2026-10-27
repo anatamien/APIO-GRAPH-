@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {addPairs,createProject,makeObject,type ProjectDocument} from '../../src/domain/model';
@@ -9,7 +10,7 @@ const header=(page:Page,name:string)=>page.locator('header').getByRole('button',
 async function saved(page:Page){
  const pending=page.waitForEvent('download');await header(page,'Сохранить').click();
  const download=await pending;
- return JSON.parse(await readFile((await download.path())!,'utf8')) as ProjectDocument;
+ return await downloadedGraph(await readFile((await download.path())!)) as ProjectDocument;
 }
 
 for(const route of ['toolbar-text','toolbar-file','external-file','drop','clipboard','plus-text','plus-file'] as const){

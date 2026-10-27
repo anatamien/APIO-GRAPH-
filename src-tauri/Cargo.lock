@@ -49,11 +49,13 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "apio-graph"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
+ "crc32fast",
  "percent-encoding",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

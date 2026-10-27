@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-save-data-table"
+description = "Enables the save_data_table command without any pre-configured scope."
+commands.allow = ["save_data_table"]
+
+[[permission]]
+identifier = "deny-save-data-table"
+description = "Denies the save_data_table command without any pre-configured scope."
+commands.deny = ["save_data_table"]

@@ -1,0 +1,15 @@
+import {useEffect,useState} from 'react';
+import {Paperclip} from 'lucide-react';
+import type {T} from '../../app/controls';
+import {addTranslations} from '../../app/i18n';
+import type {OriginTabState} from './history';
+import type {OriginNode} from './model';
+import {originResource,originResourceSlice,exportOriginAttachment} from './platform';
+import {identifyAttachment,type PassiveAttachmentType} from './attachmentType';
+addTranslations({originAttachmentRetained:['Файл распознан и сохранен. Сохраните его отдельно для открытия подходящей программой.','The file is recognized and retained. Save a copy to open it in an appropriate application.'],originAttachmentLarge:['Предпросмотр большого вложения не загружается автоматически.','Large attachment previews are not loaded automatically.'],originAttachmentFailed:['Не удалось прочитать вложение. Исходные байты сохранены в проекте.','Could not read the attachment. Original bytes remain in the project.']});
+export function passiveImageType(bytes:Uint8Array):'image/png'|'image/jpeg'|null{const type=identifyAttachment(bytes)?.mime;return type==='image/png'||type==='image/jpeg'?type:null}
+export function OriginAttachment({origin,node,t}:{origin:OriginTabState;node:OriginNode;t:T}){
+ const [preview,setPreview]=useState<{url:string|null;text:string;type:PassiveAttachmentType|null}>({url:null,text:'',type:null}),[error,setError]=useState(''),resource=origin.model.resources.find(r=>r.id===node.properties.resourceId);
+ useEffect(()=>{let active=true,url:string|undefined;const cancel=new AbortController();setPreview({url:null,text:'',type:null});setError('');if(resource)void(async()=>{const prefix=await originResourceSlice(origin,resource.id,0,Math.min(65536,resource.size)),type=identifyAttachment(prefix);if(!active)return;let text='';if(type?.preview==='image'&&resource.size<=8*1024*1024){const bytes=await originResource(origin,resource.id,cancel.signal);if(!active)return;url=URL.createObjectURL(new Blob([bytes as BlobPart],{type:type.mime}))}else if(type?.preview==='text')text=new TextDecoder('utf-8').decode(prefix);if(active)setPreview({url:url??null,text,type})})().catch(()=>{if(active)setError(t('originAttachmentFailed'))});return()=>{active=false;cancel.abort();if(url)URL.revokeObjectURL(url)}},[origin,resource]);
+ return <div className="origin-object-summary"><Paperclip size={28}/><p>{preview.type?.label??t('originKind.attachment')} · {resource?.size.toLocaleString()??0} B</p>{preview.url?<img className="origin-attachment-preview" src={preview.url} alt={preview.type?.label??''}/>:preview.text?<pre>{preview.text}{resource&&resource.size>65536?'…':''}</pre>:<p>{preview.type?t(resource&&resource.size>8*1024*1024?'originAttachmentLarge':'originAttachmentRetained'):t('originAttachmentUnknown')}</p>}<button disabled={!resource} onClick={()=>void exportOriginAttachment(origin,node.id).catch(()=>setError(t('originAttachmentFailed')))}>{t('originExportAttachment')}</button>{error&&<p role="alert">{error}</p>}</div>;
+}

@@ -1,8 +1,9 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {addPairs,createProject} from '../../src/domain/model';
 const header=(p:Page,name:string)=>p.locator('header').getByRole('button',{name,exact:true});
-async function save(p:Page){const pending=p.waitForEvent('download');await header(p,'Сохранить').click();return JSON.parse(await readFile((await(await pending).path())!,'utf8'))}
+async function save(p:Page){const pending=p.waitForEvent('download');await header(p,'Сохранить').click();return await downloadedGraph(await readFile((await(await pending).path())!))}
 test('unconfirmed append and partial row leave document and history unchanged; confirmed pairs stay on current axes',async({page})=>{
  await page.goto('/');const p=addPairs(createProject(),[{x:1,y:2},{x:3,y:4}],'A');p.viewport={xMin:-20,xMax:20,yMin:-10,yMax:10};
  await page.locator('input[type=file]').setInputFiles({name:'A.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await header(page,'Таблица').click();const table=page.locator('.data-panel');const before=await save(page);
@@ -11,7 +12,7 @@ test('unconfirmed append and partial row leave document and history unchanged; c
  await table.getByRole('button',{name:'Добавить данные к графику',exact:true}).click();await table.getByRole('button',{name:'Ввести вручную',exact:true}).click();
  expect((await save(page)).datasets).toEqual(before.datasets);await table.getByRole('textbox',{name:'Новая точка X',exact:true}).fill('17.2');
  await expect(table.getByRole('button',{name:'Добавить точку',exact:true})).toBeDisabled();await table.getByRole('button',{name:'Отмена',exact:true}).click();
- const cancel=await save(page);for(const key of ['series','datasets','viewport','legend'])expect(cancel[key]).toEqual(before[key]);await expect(header(page,'Отменить')).toBeDisabled();expect(await page.screenshot({clip})).toEqual(imageBefore);
+ const cancel=await save(page);for(const key of ['series','datasets','viewport','legend'] as const)expect(cancel[key]).toEqual(before[key]);await expect(header(page,'Отменить')).toBeDisabled();expect(await page.screenshot({clip})).toEqual(imageBefore);
  await table.getByRole('button',{name:'Добавить данные к графику',exact:true}).click();await table.getByRole('button',{name:'Вставить таблицу',exact:true}).click();
  const imp=page.locator('.import-panel');await imp.getByLabel('Исходный текст',{exact:true}).fill('10;15\n11;16');await imp.getByRole('button',{name:'Построить',exact:true}).click();
  const after=await save(page);expect(after.datasets).toHaveLength(2);expect(after.datasets[0]).toEqual(before.datasets[0]);expect(after.datasets[1].points.map((v:{x:number;y:number})=>[v.x,v.y])).toEqual([[10,15],[11,16]]);expect(after.viewport).toEqual(before.viewport);await expect(page.getByRole('tab')).toHaveCount(1);

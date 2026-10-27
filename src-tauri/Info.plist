@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleDocumentTypes</key><array><dict>
+    <key>CFBundleTypeName</key><string>APIO GRAPH project</string>
+    <key>CFBundleTypeRole</key><string>Editor</string>
+    <key>LSHandlerRank</key><string>Owner</string>
+    <key>LSItemContentTypes</key><array><string>app.apio.graph.project</string></array>
+    <key>CFBundleTypeExtensions</key><array><string>aph</string></array>
+    <key>CFBundleTypeIconFile</key><string>aph-document.icns</string>
+  </dict></array>
+</dict></plist>

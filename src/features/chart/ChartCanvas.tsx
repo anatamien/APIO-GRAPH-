@@ -1,4 +1,7 @@
-import {useEffect,useMemo,useRef,useState,type PointerEvent,type MouseEvent} from 'react';
+import {TableDividers} from './TableDividers';
+import {FixedTableLayer,isFixedTable,type TableLayerEvents} from './FixedTableLayer';
+import {tableObject,makeDiagramTable,layoutTable,scaleTable,type DiagramTable} from '../../domain/diagramTable';
+import {useEffect,useLayoutEffect,useMemo,useRef,useState,useId,type PointerEvent,type MouseEvent} from 'react';
 import type {ProjectDocument,Anchor,DrawObject,XY} from '../../domain/model';
 import {makeObject} from '../../domain/model';
 import {createCoordinates,anchorPixel,snapIndex,sameCandidates,pointAnchor,axisTicks,assertAxisRange,textRotation,type Candidate} from '../../domain/geometry';
@@ -10,8 +13,10 @@ import {validView,zoomView} from '../../domain/navigation';
 import {layoutText} from '../../domain/textGeometry';
 import {replaceText} from '../../domain/textEditing';
 import {frameQueue} from '../../domain/frameQueue';
-export interface ChartProps {project:ProjectDocument;tool:Tool;setTool:(t:Tool)=>void;selection:string[];onSelect:(s:string[])=>void;onChange:(label:string,fn:(p:ProjectDocument)=>ProjectDocument)=>void;onNavigate:(viewport:ProjectDocument['viewport'])=>void;previewing?:boolean;settings:Settings;t:T;onImport:()=>void;onManual:()=>void;readOnly:boolean}
-interface Gesture {kind:'draw'|'move'|'handle'|'pan';start:XY;anchor:Anchor;object?:DrawObject;handle?:string;fixed?:Anchor;pointerId:number;before:ProjectDocument}
+import type {SignalInteractionStore} from '../analysis/signalInteraction';
+import {SignalDraftLayer} from '../analysis/SignalDraftLayer';
+export interface ChartProps {project:ProjectDocument;tableDraft?:DiagramTable;compact?:boolean;objectLayer?:boolean;transparent?:boolean;onAreaActivate?:(id:string)=>void;onAreaNavigate?:(id:string,v:ProjectDocument['viewport'])=>void;tool:Tool;setTool:(t:Tool)=>void;selection:string[];onSelect:(s:string[])=>void;onChange:(label:string,fn:(p:ProjectDocument)=>ProjectDocument)=>void;onNavigate:(viewport:ProjectDocument['viewport'])=>void;previewing?:boolean;settings:Settings;t:T;onImport:()=>void;onManual:()=>void;readOnly:boolean;signalInteraction?:SignalInteractionStore}
+interface Gesture {kind:'draw'|'move'|'handle'|'pan';start:XY;anchor:Anchor;object?:DrawObject;handle?:string;fixed?:Anchor;tableFixed?:XY;pointerId:number;before:ProjectDocument}
 type PointerInput=Pick<PointerEvent<SVGSVGElement>,'clientX'|'clientY'|'buttons'|'altKey'|'shiftKey'|'pointerId'>;
 function direction(start:XY,end:XY):XY|null {
  const scale=Math.max(Math.abs(start.x),Math.abs(start.y),Math.abs(end.x),Math.abs(end.y),Number.MIN_VALUE);
@@ -20,34 +25,38 @@ function direction(start:XY,end:XY):XY|null {
 }
 function orthogonal(start:XY,end:XY):XY{return Math.abs(end.x-start.x)>=Math.abs(end.y-start.y)?{x:end.x,y:start.y}:{x:start.x,y:end.y}}
 function logSpan(min:number,max:number):number {const scale=Math.max(Math.abs(min),Math.abs(max),Number.MIN_VALUE);return Math.log(scale)+Math.log(max/scale-min/scale)}
-export function ChartCanvas({project:p,tool,setTool,selection,onSelect,onChange,onNavigate,previewing=false,settings,t,onImport,onManual,readOnly}:ChartProps){
- const host=useRef<HTMLDivElement>(null),svg=useRef<SVGSVGElement>(null),gesture=useRef<Gesture|null>(null),panLatest=useRef<ProjectDocument['viewport']|null>(null);
- const [size,setSize]=useState({width:1200,height:760}),[draft,setDraft]=useState<DrawObject|null>(null),[panView,setPanView]=useState<ProjectDocument['viewport']|null>(null),[hover,setHover]=useState<Candidate[]>([]),[candidateIndex,setCandidateIndex]=useState(0),[textDraft,setTextDraft]=useState<{anchor:Anchor;position:XY;object?:DrawObject;existingId?:string;value:string}|null>(null),[axisDraft,setAxisDraft]=useState<{axis:'x'|'y';position:XY;value:string}|null>(null),[space,setSpace]=useState(false);
- useEffect(()=>{const h=host.current;if(!h)return;const r=new ResizeObserver(entries=>{const {width,height}=entries[0].contentRect;setSize({width:Math.max(300,width),height:Math.max(250,height)})});r.observe(h);return()=>r.disconnect()},[]);
+export function ChartCanvas({project:p,tableDraft,compact=false,transparent=false,objectLayer=false,tool,setTool,selection,onSelect,onChange,onNavigate,previewing=false,settings,t,onImport,onManual,readOnly,signalInteraction}:ChartProps){
+ const clipId=useId().replace(/:/g,'');
+ const clientTransform=useRef<DOMMatrix|null>(null);
+ const host=useRef<HTMLDivElement>(null),svg=useRef<SVGSVGElement>(null),captured=useRef<SVGSVGElement|null>(null),gesture=useRef<Gesture|null>(null),panLatest=useRef<ProjectDocument['viewport']|null>(null);
+ const [size,setSize]=useState({width:1200,height:760}),[draft,setDraft]=useState<DrawObject|null>(null),[panView,setPanView]=useState<ProjectDocument['viewport']|null>(null),[hover,setHover]=useState<Candidate[]>([]),[candidateIndex,setCandidateIndex]=useState(0),[textDraft,setTextDraft]=useState<{anchor:Anchor;position:XY;object?:DrawObject;existingId?:string;cellIndex?:number;value:string}|null>(null),[axisDraft,setAxisDraft]=useState<{axis:'x'|'y';position:XY;value:string}|null>(null),[space,setSpace]=useState(false);
+ useEffect(()=>{const h=host.current;if(!h)return;const r=new ResizeObserver(entries=>{const {width,height}=entries[0].contentRect;clientTransform.current=null;setSize({width:Math.max(compact?90:300,width),height:Math.max(compact?80:250,height)})});r.observe(h);return()=>r.disconnect()},[]);
  const draftLatest=useRef<DrawObject|null>(null),pointerHandler=useRef<(e:PointerInput)=>void>(()=>{});
  const pointerFrames=useMemo(()=>frameQueue<PointerInput>(e=>pointerHandler.current(e)),[]);
  const updateDraft=(value:DrawObject|null)=>{draftLatest.current=value;setDraft(value)};
  const shown=useMemo(()=>panView?{...p,viewport:panView}:p,[p,panView]);
  const c=useMemo(()=>createCoordinates(shown,size.width,size.height),[shown.viewport,p.axes,size.width,size.height,p.page.paddingPx]);
- const find=useMemo(()=>snapIndex(p,c),[p.datasets,p.series,p.calculations,p.extensions.sourceRows,c]);
- const pixel=(e:{clientX:number;clientY:number})=>{const node=svg.current;if(!node)return{x:0,y:0};const m=node.getScreenCTM();if(!m)return{x:0,y:0};const pt=new DOMPoint(e.clientX,e.clientY).matrixTransform(m.inverse());return{x:pt.x,y:pt.y}};
+ const find=useMemo(()=>readOnly||objectLayer||tool==='pan'?(_x:number,_y:number,_r?:number):Candidate[]=>[]:snapIndex(p,c),[p.datasets,p.series,p.calculations,p.extensions.sourceRows,c,readOnly,objectLayer,tool]);
+ // Root SVG client coordinates stay fixed while axes pan/zoom. Avoid forced layout per input event.
+ useLayoutEffect(()=>{clientTransform.current=null},[size.width,size.height,settings.left]);
+ const pixel=(e:{clientX:number;clientY:number})=>{const node=svg.current;if(!node)return{x:0,y:0};if(!clientTransform.current){const matrix=node.getScreenCTM();if(!matrix)return{x:0,y:0};clientTransform.current=matrix.inverse()}const pt=new DOMPoint(e.clientX,e.clientY).matrixTransform(clientTransform.current);return{x:pt.x,y:pt.y}};
  const anchorAt=(pos:XY,alt=false):Anchor=>{
   if(!alt&&settings.snap==='dataPoint'){const candidates=find(pos.x,pos.y,settings.snapRadius);if(candidates.length)return pointAnchor(candidates[candidateIndex%candidates.length])}
   let x=c.x.invert(pos.x),y=c.y.invert(pos.y);
   if(!alt&&settings.snap==='grid'){const xs=axisTicks(p.axes.x,p.viewport.xMin,p.viewport.xMax),ys=axisTicks(p.axes.y,p.viewport.yMin,p.viewport.yMax);x=xs.reduce((best,v)=>Math.abs(c.x(v)-pos.x)<Math.abs(c.x(best)-pos.x)?v:best,xs[0]??x);y=ys.reduce((best,v)=>Math.abs(c.y(v)-pos.y)<Math.abs(c.y(best)-pos.y)?v:best,ys[0]??y)}
   return {mode:'data',x,y};
  };
- const clear=()=>{pointerFrames.cancel();const g=gesture.current;gesture.current=null;if(g&&svg.current?.hasPointerCapture(g.pointerId))svg.current.releasePointerCapture(g.pointerId);panLatest.current=null;updateDraft(null);setPanView(null)};
+ const clear=()=>{pointerFrames.cancel();const g=gesture.current;gesture.current=null;if(g&&captured.current?.hasPointerCapture(g.pointerId))captured.current.releasePointerCapture(g.pointerId);captured.current=null;panLatest.current=null;updateDraft(null);setPanView(null)};
  const finishPan=()=>{if(gesture.current?.kind!=='pan')return;if(panLatest.current)onNavigate(panLatest.current);clear()};
  useEffect(()=>{const down=(e:KeyboardEvent)=>{if(e.target instanceof HTMLElement&&e.target.closest('input,textarea,select,[contenteditable]'))return;if(e.code==='Space'){e.preventDefault();setSpace(true)}if(e.key==='Escape'){clear();setTextDraft(null);setAxisDraft(null)}if(e.key==='Tab'&&hover.length>1){e.preventDefault();setCandidateIndex(i=>(i+1)%hover.length)}};const up=(e:KeyboardEvent)=>{if(e.code==='Space')setSpace(false)};const blur=()=>{clear();setSpace(false)};window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',blur);return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur)}},[hover.length]);
  // A non-passive listener consumes wheel input only over the chart, not over panels.
  const wheelState=useRef({p,size,previewing,onNavigate,pixel});wheelState.current={p,size,previewing,onNavigate,pixel};
  useEffect(()=>{
-  const node=svg.current;if(!node)return;let view:ProjectDocument['viewport']|null=null;
+  const node=host.current;if(!node)return;let view:ProjectDocument['viewport']|null=null;
   const frames=frameQueue<ProjectDocument['viewport']>(next=>{wheelState.current.onNavigate(next);view=null});
   const wheel=(e:WheelEvent)=>{
    const {p,size,previewing,pixel}=wheelState.current;
-   if(previewing||gesture.current||e.deltaY===0)return;e.preventDefault();setHover(prev=>prev.length?[]:prev);
+   if(previewing||gesture.current||e.deltaY===0||(e.target instanceof Element&&e.target.closest('.inline-text')))return;e.preventDefault();setHover(prev=>prev.length?[]:prev);
    const current=view??p.viewport,pos=pixel(e),coords=createCoordinates({...p,viewport:current},size.width,size.height);
    const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?size.height:1),next=zoomView(current,{x:coords.x.invert(pos.x),y:coords.y.invert(pos.y)},Math.exp(Math.max(-1,Math.min(1,delta*0.002))));
    if(next){view=next;frames.push(next)}
@@ -56,8 +65,8 @@ export function ChartCanvas({project:p,tool,setTool,selection,onSelect,onChange,
  },[]);
  useEffect(()=>()=>pointerFrames.cancel(),[pointerFrames]);
  const moveAnchor=(a:Anchor,dx:number,dy:number):Anchor=>a.mode==='page'?{...a,pageX:Math.max(0,Math.min(1,a.pageX+dx/size.width)),pageY:Math.max(0,Math.min(1,a.pageY+dy/size.height))}:a.mode==='point'?{...a,offsetXpx:a.offsetXpx+dx,offsetYpx:a.offsetYpx+dy}:{mode:'data',x:a.x+(c.x.invert(dx)-c.x.invert(0)),y:a.y+(c.y.invert(dy)-c.y.invert(0))};
- const rectangleCorners=(o:DrawObject):XY[]=>{const a=anchorPixel(p,o.anchors[0],c),b=anchorPixel(p,o.anchors[1]??o.anchors[0],c),left=Math.min(a.x,b.x),right=Math.max(a.x,b.x),top=Math.min(a.y,b.y),bottom=Math.max(a.y,b.y);return[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]};
- const fixedCorner=(o:DrawObject,index:number):Anchor=>{const pos=rectangleCorners(o)[(index+2)%4];const existing=o.anchors.find(a=>{const pt=anchorPixel(p,a,c);return Math.hypot(pt.x-pos.x,pt.y-pos.y)<1e-6});return existing??(o.anchors.every(a=>a.mode==='page')?{mode:'page',pageX:pos.x/size.width,pageY:pos.y/size.height}:{mode:'data',x:c.x.invert(pos.x),y:c.y.invert(pos.y)})};
+ const rectangleCorners=(o:DrawObject):XY[]=>{const a=anchorPixel(p,o.anchors[0],c),layout=o.type==='table'&&o.table?layoutTable(o.table,o.style):null,b=layout?{x:a.x+(o.geometry.widthPx??layout.width),y:a.y+(o.geometry.heightPx??layout.height)}:anchorPixel(p,o.anchors[1]??o.anchors[0],c),left=Math.min(a.x,b.x),right=Math.max(a.x,b.x),top=Math.min(a.y,b.y),bottom=Math.max(a.y,b.y);return[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}]};
+ const fixedCorner=(o:DrawObject,index:number):Anchor=>{const pos=rectangleCorners(o)[(index+2)%4];const existing=o.anchors.find(a=>{const pt=anchorPixel(p,a,c);return Math.hypot(pt.x-pos.x,pt.y-pos.y)<1e-6});return existing??(o.anchors.every(a=>a.mode==='page')?{mode:'page',pageX:Math.max(0,Math.min(1,pos.x/size.width)),pageY:Math.max(0,Math.min(1,pos.y/size.height))}:{mode:'data',x:c.x.invert(pos.x),y:c.y.invert(pos.y)})};
  const lineHandle=(o:DrawObject):XY=>{
   const origin=anchorPixel(p,o.anchors[0],c),vx=o.geometry.directionX??1,vy=o.geometry.directionY??0;
   const lx=vx===0?-Infinity:Math.log(Math.abs(vx))+Math.log(c.right-c.left)-logSpan(p.viewport.xMin,p.viewport.xMax),ly=vy===0?-Infinity:Math.log(Math.abs(vy))+Math.log(c.bottom-c.top)-logSpan(p.viewport.yMin,p.viewport.yMax),largest=Math.max(lx,ly);
@@ -72,80 +81,101 @@ export function ChartCanvas({project:p,tool,setTool,selection,onSelect,onChange,
  };
  const pointerDown=(e:PointerEvent<SVGSVGElement>)=>{
   if(previewing)return;const pos=pixel(e);
-  if(e.button===1||(e.button===0&&(tool==='pan'||space))){e.preventDefault();clear();setHover([]);gesture.current={kind:'pan',start:pos,anchor:anchorAt(pos,true),pointerId:e.pointerId,before:p};e.currentTarget.setPointerCapture(e.pointerId);return}
+  if(e.button===1||(e.button===0&&(tool==='pan'||space))){e.preventDefault();clear();setHover([]);gesture.current={kind:'pan',start:pos,anchor:anchorAt(pos,true),pointerId:e.pointerId,before:p};captured.current=e.currentTarget;captured.current.setPointerCapture(e.pointerId);return}
   if(e.button!==0||textDraft||axisDraft)return;const hit=document.elementFromPoint(e.clientX,e.clientY)??e.target as Element;let target=hit.closest('[data-target]')?.getAttribute('data-target');
-  const handle=(e.target as Element).closest('[data-handle]')?.getAttribute('data-handle');
+  const signal=signalInteraction?.getSnapshot();
+  if(!readOnly&&tool==='select'&&signal&&(signal.mode==='nodes'||signal.mode==='background')&&pos.x>=c.left&&pos.x<=c.right&&pos.y>=c.top&&pos.y<=c.bottom){
+   if(signal.mode==='nodes'){signal.onPick?.({x:c.x.invert(pos.x),y:c.y.invert(pos.y)})}
+   else {const near=find(pos.x,pos.y,Math.max(10,settings.snapRadius)).find(a=>a.datasetId===signal.sourceDatasetId);if(near)signal.onPick?.({x:near.point.x,y:near.point.y})}
+   setHover([]);return;
+  }
+  let handle=hit.closest('[data-handle]')?.getAttribute('data-handle');
+  if(!handle&&target&&selection.includes(target)){const table=p.objects.find(o=>`object:${o.id}`===target);if(table?.table&&!table.locked){const box=rectangleCorners(table),layout=layoutTable(table.table,table.style),sx=(box[2].x-box[0].x)/layout.width,sy=(box[2].y-box[0].y)/layout.height;let at=box[0].x;for(const [i,column]of table.table.columns.slice(0,-1).entries()){at+=column.size*sx;if(Math.abs(pos.x-at)<=6&&pos.y>=box[0].y&&pos.y<=box[2].y)handle=`column-${i}`}if(!handle){at=box[0].y;for(const [i,row]of table.table.rows.slice(0,-1).entries()){at+=row.size*sy;if(Math.abs(pos.y-at)<=6&&pos.x>=box[0].x&&pos.x<=box[2].x)handle=`row-${i}`}}}}
+
   const axis=hit.closest('[data-axis-label]')?.getAttribute('data-axis-label');if(axis==='x'||axis==='y'){onSelect([`axis:${axis}`]);return}
   if(tool==='pan')return;
   if(tool==='select'){
    if(e.altKey){target=cycleTarget(e)??target;if(target)onSelect([target]);return}
    if(!handle&&!target?.startsWith('object:')){const near=find(pos.x,pos.y,Math.max(10,settings.snapRadius));if(near.length)target=`series:${near[candidateIndex%near.length].seriesId}`}
-   if(target){onSelect(e.shiftKey?(selection.includes(target)?selection.filter(value=>value!==target):[...selection,target]):[target]);if(e.shiftKey)return;const object=p.objects.find(o=>`object:${o.id}`===target);if(object&&!object.locked&&!readOnly){const isHandle=handle!==undefined&&handle!==null&&handle!=='center';gesture.current={kind:isHandle?'handle':'move',start:pos,anchor:anchorAt(pos,true),object,handle:handle??undefined,fixed:object.type==='rectangle'&&handle?.startsWith('corner-')?fixedCorner(object,Number(handle.slice(7))):undefined,pointerId:e.pointerId,before:p};e.currentTarget.setPointerCapture(e.pointerId)}}else if(!e.shiftKey)onSelect([]);return;
+   if(target){onSelect(e.shiftKey?(selection.includes(target)?selection.filter(value=>value!==target):[...selection,target]):[target]);if(e.shiftKey)return;const object=p.objects.find(o=>`object:${o.id}`===target);if(object&&!object.locked&&!readOnly){const isHandle=handle!==undefined&&handle!==null&&handle!=='center';gesture.current={kind:isHandle?'handle':'move',start:pos,anchor:anchorAt(pos,true),object,handle:handle??undefined,fixed:object.type==='rectangle'&&handle?.startsWith('corner-')?fixedCorner(object,Number(handle.slice(7))):undefined,tableFixed:object.type==='table'&&handle?.startsWith('corner-')?rectangleCorners(object)[(Number(handle.slice(7))+2)%4]:undefined,pointerId:e.pointerId,before:p};captured.current=e.currentTarget;captured.current.setPointerCapture(e.pointerId)}}else if(!e.shiftKey)onSelect([]);return;
   }
   if(tool==='zoom'||tool==='zoom-out'){const out=(tool==='zoom-out')!==e.shiftKey,next=zoomView(p.viewport,{x:c.x.invert(pos.x),y:c.y.invert(pos.y)},out?1.5:1/1.5);if(next)onNavigate(next);return}
   if(readOnly)return;
   const inside=pos.x>=c.left&&pos.x<=c.right&&pos.y>=c.top&&pos.y<=c.bottom;
-  if(!inside&&tool!=='text')return;
-  const a=!inside?{mode:'page' as const,pageX:pos.x/size.width,pageY:pos.y/size.height}:anchorAt(pos,e.altKey);
+  if(!inside&&tool!=='text'&&tool!=='table')return;
+  const a=!inside?{mode:'page' as const,pageX:Math.max(0,Math.min(1,pos.x/size.width)),pageY:Math.max(0,Math.min(1,pos.y/size.height))}:anchorAt(pos,e.altKey);
   if(tool==='text'){setTextDraft({anchor:a,position:pos,value:''});return}
-  const o={...makeObject(tool,[a,...(tool==='marker'?[]:[a])]),name:t(tool)};if(tool==='line')o.anchors=[a];
-  gesture.current={kind:'draw',start:pos,anchor:a,object:o,pointerId:e.pointerId,before:p};updateDraft(o);e.currentTarget.setPointerCapture(e.pointerId);
+  const o=tool==='table'?{...tableObject([{mode:'page',pageX:Math.max(0,Math.min(1,pos.x/size.width)),pageY:Math.max(0,Math.min(1,pos.y/size.height))},{mode:'page',pageX:Math.max(0,Math.min(1,pos.x/size.width)),pageY:Math.max(0,Math.min(1,pos.y/size.height))}],structuredClone(tableDraft??makeDiagramTable())),name:t('diagramTable')}:{...makeObject(tool,[a,...(tool==='marker'?[]:[a])]),name:t(tool)};if(tool==='line')o.anchors=[a];
+  gesture.current={kind:'draw',start:pos,anchor:a,object:o,pointerId:e.pointerId,before:p};updateDraft(o);captured.current=e.currentTarget;captured.current.setPointerCapture(e.pointerId);
  };
  const pointerMove=(e:PointerInput)=>{
   const pos=pixel(e),g=gesture.current;if(!g){const near=find(pos.x,pos.y,settings.snapRadius);setHover(prev=>sameCandidates(prev,near)?prev:near);if(near[0]?.point.id!==hover[0]?.point.id)setCandidateIndex(0);return}
   const dx=pos.x-g.start.x,dy=pos.y-g.start.y;
   if(g.kind==='pan'){const start=createCoordinates(g.before,size.width,size.height),v={xMin:g.before.viewport.xMin-(start.x.invert(dx)-start.x.invert(0)),xMax:g.before.viewport.xMax-(start.x.invert(dx)-start.x.invert(0)),yMin:g.before.viewport.yMin-(start.y.invert(dy)-start.y.invert(0)),yMax:g.before.viewport.yMax-(start.y.invert(dy)-start.y.invert(0))};if(validView(v)){try{assertAxisRange(p.axes.x,v.xMin,v.xMax);assertAxisRange(p.axes.y,v.yMin,v.yMax)}catch{return}panLatest.current=v;setPanView(v)}if(!(e.buttons&5))finishPan();return}
   const o=g.object!;
-  if(g.kind==='move'){updateDraft({...o,anchors:o.anchors.map((a,i)=>o.type==='callout'&&i===0?a:moveAnchor(a,dx,dy))});return}
+  if(g.kind==='move'){let mx=dx,my=dy;if(o.type==='table'&&o.anchors.every(a=>a.mode==='page')){const box=rectangleCorners(o);mx=Math.max(-box[0].x,Math.min(size.width-box[2].x,dx));my=Math.max(-box[0].y,Math.min(size.height-box[2].y,dy))}updateDraft({...o,anchors:o.anchors.map((a,i)=>o.type==='callout'&&i===0?a:moveAnchor(a,mx,my))});return}
   if(g.kind==='handle'){
+   if(o.type==='table'&&o.table&&g.handle&&/^(column|row)-\d+$/.test(g.handle)){const [dimension,raw]=g.handle.split('-'),at=Number(raw),key=dimension==='column'?'columns':'rows',delta=dimension==='column'?dx:dy;updateDraft({...o,table:{...o.table,[key]:o.table[key].map((item,i)=>i===at?{...item,size:Math.max(16,Math.min(30000,Math.round((item.size+delta)*100)/100))}:item)}});return}
+   if(o.type==='table'&&g.tableFixed&&o.table){const x=Math.max(0,Math.min(g.tableFixed.x,pos.x)),y=Math.max(0,Math.min(g.tableFixed.y,pos.y)),w=Math.max(o.table.columns.length*16,Math.abs(pos.x-g.tableFixed.x)),h=Math.max(o.table.rows.length*16,Math.abs(pos.y-g.tableFixed.y));updateDraft({...o,anchors:[o.anchors[0].mode==='page'?{mode:'page',pageX:Math.min(1,x/size.width),pageY:Math.min(1,y/size.height)}:{mode:'data',x:c.x.invert(x),y:c.y.invert(y)}],geometry:{widthPx:Math.min(600000,w),heightPx:Math.min(1500000,h)}});return}
    if(o.type==='rectangle'&&g.fixed){updateDraft({...o,anchors:[anchorAt(pos,e.altKey),g.fixed]});return}
    if(o.type==='line'&&g.handle==='direction'){const origin=anchorPixel(p,o.anchors[0],c),end=e.shiftKey?orthogonal(origin,pos):anchorPixel(p,anchorAt(pos,e.altKey),c),vector=direction({x:c.x.invert(origin.x),y:c.y.invert(origin.y)},{x:c.x.invert(end.x),y:c.y.invert(end.y)});if(vector)updateDraft({...o,geometry:{...o.geometry,directionX:vector.x,directionY:vector.y}});return}
    const anchors=[...o.anchors],index=Number(g.handle??0),locked=e.shiftKey&&['segment','arrow'].includes(o.type);anchors[index]=anchorAt(locked?orthogonal(anchorPixel(p,anchors[index===0?1:0],c),pos):pos,locked||e.altKey);updateDraft({...o,anchors});return;
   }
   const locked=e.shiftKey&&['line','segment','arrow'].includes(o.type),origin=anchorPixel(p,g.anchor,c),endPosition=locked?orthogonal(origin,pos):pos,b=anchorAt(endPosition,locked||e.altKey);
   if(o.type==='line'){const vector=direction({x:c.x.invert(origin.x),y:c.y.invert(origin.y)},{x:c.x.invert(endPosition.x),y:c.y.invert(endPosition.y)});if(vector)updateDraft({...o,geometry:{directionX:vector.x,directionY:vector.y}})}
-  else {let end=b;if(e.shiftKey&&o.type==='rectangle'){const d=Math.max(Math.abs(dx),Math.abs(dy));end=anchorAt({x:g.start.x+Math.sign(dx)*d,y:g.start.y+Math.sign(dy)*d},true)}updateDraft({...o,anchors:o.type==='marker'?[b]:[g.anchor,end]})}
+  else if(o.type==='table'&&o.table){const x=Math.max(0,Math.min(g.start.x,pos.x)),y=Math.max(0,Math.min(g.start.y,pos.y));updateDraft({...o,anchors:[{mode:'page',pageX:Math.min(1,x/size.width),pageY:Math.min(1,y/size.height)}],geometry:{widthPx:Math.max(o.table.columns.length*16,Math.min(600000,Math.abs(dx))),heightPx:Math.max(o.table.rows.length*16,Math.min(1500000,Math.abs(dy)))}})}
+  else {let end=b;if(e.shiftKey&&o.type==='rectangle'){const d=Math.max(Math.abs(dx),Math.abs(dy));end=anchorAt({x:g.start.x+Math.sign(dx)*d,y:g.start.y+Math.sign(dy)*d},true)}updateDraft({...o,anchors:o.type==='marker'?[b]:o.type==='table'?o.anchors:[g.anchor,end]})}
  };
  pointerHandler.current=pointerMove;
  const pointerUp=(e:PointerEvent<SVGSVGElement>)=>{
   const g=gesture.current;if(!g)return;const pos=pixel(e);pointerFrames.flush({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,buttons:g.kind==='pan'?1:e.buttons,altKey:e.altKey,shiftKey:e.shiftKey});
   if(g.kind==='pan'){finishPan();return}
-  const o=draftLatest.current??g.object!;
+  let o=draftLatest.current??g.object!;
+  if(g.kind==='draw'&&o.type==='table'&&Math.hypot(pos.x-g.start.x,pos.y-g.start.y)<3){const layout=layoutTable(o.table!,o.style),x=Math.max(0,Math.min(g.start.x,size.width-layout.width)),y=Math.max(0,Math.min(g.start.y,size.height-layout.height));o={...o,anchors:[{mode:'page',pageX:x/size.width,pageY:y/size.height}],geometry:{}}}
+  if(o.type==='table'&&o.table&&o.geometry.widthPx!==undefined&&o.geometry.heightPx!==undefined)o={...o,table:scaleTable(o.table,o.geometry.widthPx,o.geometry.heightPx),geometry:{}};
   if(g.kind!=='draw'&&Math.hypot(pos.x-g.start.x,pos.y-g.start.y)<0.5){clear();return}
-  if(g.kind==='draw'&&Math.hypot(pos.x-g.start.x,pos.y-g.start.y)<3&&o.type!=='marker'){clear();return}
+  if(g.kind==='draw'&&Math.hypot(pos.x-g.start.x,pos.y-g.start.y)<3&&!['marker','table'].includes(o.type)){clear();return}
   if(g.kind==='draw'&&o.type==='callout'){setTextDraft({anchor:o.anchors[1],position:pos,object:o,value:''});clear();return}
-  onChange(g.kind==='draw'?'AddObject':'MoveObject',q=>({...q,objects:g.kind==='draw'?[...q.objects,{...o,zIndex:q.objects.length+1}]:q.objects.map(a=>a.id===o.id?o:a)}));onSelect([`object:${o.id}`]);if(!settings.repeatTool)setTool('select');clear();
+  if(g.kind==='handle'&&o.table&&g.object?.table&&g.handle&&/^(column|row)-\d+$/.test(g.handle)){const [dim,raw]=g.handle.split('-'),key=dim==='column'?'columns':'rows',at=Number(raw),before=g.object.table[key][at],delta=o.table[key][at].size-before.size;onChange('EditObject',q=>({...q,objects:q.objects.map(current=>current.id===o.id&&current.table?{...current,table:{...current.table,[key]:current.table[key].map(item=>item.id===before.id?{...item,size:Math.max(16,Math.min(30000,Math.round((item.size+delta)*100)/100))}:item)}}:current)}));onSelect([`object:${o.id}`]);clear();return}
+  onChange(g.kind==='draw'?'AddObject':'MoveObject',q=>({...q,objects:g.kind==='draw'?[...q.objects,{...o,zIndex:q.objects.length+1}]:q.objects.map(a=>a.id===o.id?{...a,anchors:o.anchors,geometry:o.geometry,...(o.table&&g.kind==='handle'&&a.table?{table:{...a.table,rows:o.table.rows,columns:o.table.columns}}:{})}:a)}));onSelect([`object:${o.id}`]);if(!settings.repeatTool)setTool('select');clear();
  };
- const finishText=()=>{if(!textDraft)return;const value=textDraft.value;if(value.trim()){const o={...(textDraft.object??{...makeObject('text',[textDraft.anchor]),name:t('text')})};o.text=replaceText(o.text,value);onChange(textDraft.existingId?'EditObject':'AddObject',q=>({...q,objects:textDraft.existingId?q.objects.map(a=>a.id===textDraft.existingId?o:a):[...q.objects,{...o,zIndex:q.objects.length+1}]}));onSelect([]);if(!settings.repeatTool)setTool('select')}setTextDraft(null)};
+ const finishText=()=>{if(!textDraft)return;const value=textDraft.value;if(textDraft.object?.table&&textDraft.cellIndex!==undefined){const object=textDraft.object,index=textDraft.cellIndex;onChange('EditObject',q=>({...q,objects:q.objects.map(o=>o.id===object.id&&o.table?{...o,table:{...o.table,cells:o.table.cells.map((cell,i)=>i===index?{...cell,text:replaceText(cell.text,value)}:cell)}}:o)}));setTextDraft(null);return}if(value.trim()){const o={...(textDraft.object??{...makeObject('text',[textDraft.anchor]),name:t('text')})};o.text=replaceText(o.text,value);onChange(textDraft.existingId?'EditObject':'AddObject',q=>({...q,objects:textDraft.existingId?q.objects.map(a=>a.id===textDraft.existingId?o:a):[...q.objects,{...o,zIndex:q.objects.length+1}]}));onSelect([]);if(!settings.repeatTool)setTool('select')}setTextDraft(null)};
  const finishAxis=()=>{if(!axisDraft||readOnly)return;const{axis,value}=axisDraft;if(value!==p.axes[axis].label)onChange('SetAxis',q=>({...q,axes:{...q.axes,[axis]:{...q.axes[axis],label:value}}}));setAxisDraft(null)};
  const doubleClick=(e:MouseEvent<SVGSVGElement>)=>{
   const hit=document.elementFromPoint(e.clientX,e.clientY)??e.target as Element;
   const axis=hit.closest('[data-axis-label]')?.getAttribute('data-axis-label');
   if(axis==='x'||axis==='y'){if(readOnly)return;clear();setTextDraft(null);setAxisDraft({axis,position:pixel(e),value:p.axes[axis].label});onSelect(['axis:'+axis]);return}
   const target=hit.closest('[data-target]')?.getAttribute('data-target');if(target)onSelect([target]);
-  const o=p.objects.find(a=>'object:'+a.id===target);if(!readOnly&&o&&!o.locked&&['text','callout'].includes(o.type))setTextDraft({anchor:o.anchors[o.type==='callout'?1:0],position:anchorPixel(p,o.anchors[o.type==='callout'?1:0],c),value:o.text.map(a=>a.text).join(''),object:o,existingId:o.id});
+  const o=p.objects.find(a=>'object:'+a.id===target);const cellIndex=hit.closest('[data-table-cell]')?.getAttribute('data-table-cell');if(!readOnly&&o?.table&&!o.locked&&cellIndex!==null&&cellIndex!==undefined){const index=Number(cellIndex),cell=o.table.cells[index];if(cell)setTextDraft({anchor:o.anchors[0],position:pixel(e),value:cell.text.map(p=>p.text).join(''),object:o,existingId:o.id,cellIndex:index});return}if(!readOnly&&o&&!o.locked&&['text','callout'].includes(o.type))setTextDraft({anchor:o.anchors[o.type==='callout'?1:0],position:anchorPixel(p,o.anchors[o.type==='callout'?1:0],c),value:o.text.map(a=>a.text).join(''),object:o,existingId:o.id});
  };
  const selectionHandles=(original:DrawObject)=>{
   const o=draft?.id===original.id?draft:original;
   const handle=(key:string|number,pt:XY,cursor='crosshair')=><rect key={key} data-handle={key} x={pt.x-4} y={pt.y-4} width={8} height={8} cursor={readOnly||o.locked?'default':cursor}/>;
   let handles;
   if(o.type==='text'){const a=anchorPixel(p,o.anchors[0],c),b=layoutText(o).bounds;return <g key={o.id} data-target={'object:'+o.id} data-selected-object={o.id} transform={`translate(${a.x} ${a.y}) rotate(${textRotation(p,o.id)})`} fill="none" stroke="#476E98"><rect x={b.x-4} y={b.y-4} width={b.width+8} height={b.height+8} strokeDasharray="3 3" pointerEvents="none"/><circle data-handle="center" cx={b.x-12} cy={b.y+b.height/2} r={4} fill="white" cursor="move"/></g>}
-  if(o.type==='rectangle'){const corners=rectangleCorners(o);handles=<>{corners.map((pt,index)=>handle('corner-'+index,pt,index%2?'nesw-resize':'nwse-resize'))}{handle('center',{x:(corners[0].x+corners[2].x)/2,y:(corners[0].y+corners[2].y)/2},'move')}</>}
+  if(['rectangle','table'].includes(o.type)){const corners=rectangleCorners(o);handles=<>{o.type==='table'&&<TableDividers object={o} x={corners[0].x} y={corners[0].y}/ >}{corners.map((pt,index)=>handle('corner-'+index,pt,index%2?'nesw-resize':'nwse-resize'))}{handle('center',{x:(corners[0].x+corners[2].x)/2,y:(corners[0].y+corners[2].y)/2},'move')}</>}
   else if(o.type==='line'){const start=anchorPixel(p,o.anchors[0],c),end=lineHandle(o);handles=<><line x1={start.x} y1={start.y} x2={end.x} y2={end.y} strokeDasharray="3 3" pointerEvents="none"/>{handle(0,start,'move')}{handle('direction',end)}</>}
   else handles=o.anchors.map((a,index)=>handle(index,anchorPixel(p,a,c)));
   return <g key={o.id} data-target={'object:'+o.id} data-selected-object={o.id} fill="#FFFFFF" stroke="#476E98" strokeWidth="1.4">{handles}</g>;
  };
  const sceneProject=useMemo(()=>draft?{...shown,objects:shown.objects.some(o=>o.id===draft.id)?shown.objects.map(o=>o.id===draft.id?draft:o):shown.objects}:shown,[shown,draft]);
+ const fixedTables=useMemo(()=>sceneProject.objects.filter(isFixedTable),[sceneProject.objects]);
+ // This layer depends on document geometry, not on transient axis navigation.
+ const tableProject=useMemo(()=>({...p,objects:fixedTables}),[fixedTables,p.page]);
+ const plotProject=useMemo(()=>fixedTables.length?{...sceneProject,objects:sceneProject.objects.filter(o=>!isFixedTable(o))}:sceneProject,[sceneProject,fixedTables]);
+ const layerEvents=useRef<TableLayerEvents>({down:pointerDown,move:e=>pointerFrames.push(e),up:pointerUp,double:doubleClick,cancel:clear});layerEvents.current={down:pointerDown,move:e=>pointerFrames.push(e),up:pointerUp,double:doubleClick,cancel:clear};
  const candidate=hover[candidateIndex%Math.max(1,hover.length)];
  return <div className={`chart-host tool-${tool}`} ref={host} inert={previewing}>
-  <svg ref={svg} data-canvas-themed={sceneProject.page.background.toUpperCase()==='#FFFFFF'||undefined} role="img" aria-label="APIO GRAPH" data-testid="chart" data-raw-point-count={p.datasets.filter(d=>d.role==='raw').reduce((n,d)=>n+d.points.length,0)} width="100%" height="100%" viewBox={`0 0 ${size.width} ${size.height}`} onPointerDown={pointerDown} onPointerMove={e=>pointerFrames.push({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,buttons:e.buttons,altKey:e.altKey,shiftKey:e.shiftKey})} onPointerUp={pointerUp} onPointerCancel={clear} onLostPointerCapture={()=>{if(gesture.current)clear()}} onPointerLeave={()=>{if(!gesture.current)pointerFrames.cancel();setHover(prev=>prev.length?[]:prev)}} onMouseDown={e=>{if(e.button===1)e.preventDefault()}} onAuxClick={e=>{if(e.button===1)e.preventDefault()}} onDoubleClick={doubleClick}>
-   <ChartScene p={sceneProject} {...size} screen panning={gesture.current?.kind==='pan'}/>
-   {draft&&gesture.current?.kind==='draw'&&<g opacity={0.7} pointerEvents="none"><ObjectGeometry p={p} o={draft} c={c}/></g>}
-   {tool==='select'&&!previewing&&p.objects.filter(o=>o.visible&&selection.includes(`object:${o.id}`)).map(selectionHandles)}
+  <svg ref={svg} data-canvas-themed={sceneProject.extensions.canvasTheme!=='source'&&sceneProject.page.background.toUpperCase()==='#FFFFFF'||undefined} role="img" aria-label="APIO GRAPH" data-testid="chart" data-raw-point-count={p.datasets.filter(d=>d.role==='raw').reduce((n,d)=>n+d.points.length,0)} width="100%" height="100%" viewBox={`0 0 ${size.width} ${size.height}`} onPointerDown={pointerDown} onPointerMove={e=>pointerFrames.push({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,buttons:e.buttons,altKey:e.altKey,shiftKey:e.shiftKey})} onPointerUp={pointerUp} onPointerCancel={clear} onLostPointerCapture={()=>{if(gesture.current)clear()}} onPointerLeave={()=>{if(!gesture.current)pointerFrames.cancel();setHover(prev=>prev.length?[]:prev)}} onMouseDown={e=>{if(e.button===1)e.preventDefault()}} onAuxClick={e=>{if(e.button===1)e.preventDefault()}} onDoubleClick={doubleClick}>
+   <ChartScene clipId={clipId} includeAxes={!objectLayer} includeSeries={!objectLayer} includeLegend={!objectLayer} transparent={transparent} p={plotProject} {...size} screen panning={gesture.current?.kind==='pan'}/>
+   {signalInteraction&&!previewing&&<SignalDraftLayer clipId={clipId} store={signalInteraction} p={shown} c={c} enabled={!readOnly&&tool==='select'&&!space} t={t}/>}
+   {draft&&!isFixedTable(draft)&&gesture.current?.kind==='draw'&&<g opacity={0.7} pointerEvents="none"><ObjectGeometry p={p} o={draft} c={c}/></g>}
+   {tool==='select'&&!previewing&&p.objects.filter(o=>!isFixedTable(o)&&o.visible&&selection.includes(`object:${o.id}`)).map(selectionHandles)}
    {candidate&&<circle cx={candidate.px} cy={candidate.py} r={6} fill="none" stroke="#476E98" strokeWidth="1.5" pointerEvents="none"/>}
   </svg>
+  {!!fixedTables.length&&<FixedTableLayer project={tableProject} {...size} selection={selection} editable={tool==='select'&&!previewing} events={layerEvents}/>}
   {!p.series.length&&!p.objects.length&&tool==='select'&&<div className="empty-state"><h1>{t('emptyTitle')}</h1><p>{t('emptyHint')}</p><div className="row"><button className="primary" onClick={onImport}>{t('import')}</button><button onClick={onManual}>{t('manual')}</button></div></div>}
-  {textDraft&&<div className="inline-text" style={{left:Math.min(size.width-240,textDraft.position.x),top:Math.min(size.height-150,textDraft.position.y)}}><textarea autoFocus aria-label={t('content')} placeholder={t('newText')} value={textDraft.value} onChange={e=>setTextDraft({...textDraft,value:e.target.value})} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finishText()}if(e.key==='Escape')setTextDraft(null)}}/><div className="row"><button className="primary" onClick={finishText}>{t('apply')}</button><button onClick={()=>setTextDraft(null)}>{t('cancel')}</button></div></div>}
+  {textDraft&&<div className="inline-text" style={{left:Math.min(size.width-240,textDraft.position.x),top:Math.min(size.height-150,textDraft.position.y)}}><textarea autoFocus aria-label={t('content')} placeholder={t('newText')} value={textDraft.value} onChange={e=>setTextDraft({...textDraft,value:e.target.value})} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();finishText()}if(e.key==='Escape')setTextDraft(null)}}/><div className="row"><button className="primary" onClick={finishText}>{t('apply')}</button><button onClick={()=>setTextDraft(null)}>{t('cancel')}</button></div></div>}
   {axisDraft&&<div className="inline-text inline-axis" style={{left:Math.max(4,Math.min(size.width-244,axisDraft.position.x-120)),top:Math.max(4,Math.min(size.height-60,axisDraft.position.y-18))}}><input autoFocus aria-label={t('label')+' '+axisDraft.axis.toUpperCase()} value={axisDraft.value} onFocus={e=>e.target.select()} onChange={e=>setAxisDraft({...axisDraft,value:e.target.value})} onKeyDown={e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();finishAxis()}if(e.key==='Escape'){e.preventDefault();setAxisDraft(null)}}}/></div>}
   {candidate&&!gesture.current&&<div role="tooltip" className="point-tooltip" style={{left:Math.min(size.width-220,candidate.px+15),top:Math.max(6,candidate.py-68)}}><strong>{candidate.name}</strong><div>X {candidate.point.x} · Y {candidate.point.y}</div><small>{t('row')} {candidate.row}{hover.length>1?` · ${candidateIndex+1}/${hover.length} · Tab`:''}</small></div>}
  </div>

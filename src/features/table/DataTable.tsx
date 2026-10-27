@@ -9,6 +9,7 @@ import { addTranslations } from '../../app/i18n'
 import { parseNumber, parseText } from '../import/parser'
 import type { ParseOptions } from '../import/parser'
 import {Check} from '../../app/controls'
+import {seriesByDataset} from '../../domain/dependencies'
 
 addTranslations({
   'table.firstPoint':['Добавить первую точку','Add first point'], 'table.pasteValues':['Вставить значения','Paste values'],
@@ -46,6 +47,8 @@ export interface DataTableProps {
   onClose: () => void
   onAddData?: (source:'file'|'text') => void
   onProperties?: (seriesId:string) => void
+  initialSeriesId?:string
+  initialManual?:boolean
 }
 
 type Editing = { pointId: string; field: 'x' | 'y'; draft: string }
@@ -53,12 +56,12 @@ const rowHeight = 34
 const viewportHeight = 360
 const numberText = (value: number) => Object.is(value, -0) ? '-0' : String(value)
 
-export function DataTable({ project, onChange, t, onClose,onAddData,onProperties }: DataTableProps) {
+export function DataTable({ project, onChange, t, onClose,onAddData,onProperties,initialSeriesId,initialManual=false }: DataTableProps) {
   const titleId = useId()
-  const [seriesId, setSeriesId] = useState(project.series[0]?.id || '')
+  const [seriesId, setSeriesId] = useState(initialSeriesId??project.series[0]?.id ?? '')
   const [addMenu,setAddMenu]=useState(false)
-  const [newSeriesDraft,setNewSeriesDraft]=useState(false)
-  const [rowDraft,setRowDraft]=useState<{datasetId?:string;x:string;y:string}|null>(null)
+  const [newSeriesDraft,setNewSeriesDraft]=useState(initialManual)
+  const [rowDraft,setRowDraft]=useState<{datasetId?:string;x:string;y:string}|null>(initialManual?{x:'',y:''}:null)
   const [tableHeight,setTableHeight]=useState(viewportHeight)
   const [selectedPointId, setSelectedPointId] = useState('')
   const [selectedField, setSelectedField] = useState<'x' | 'y'>('x')
@@ -73,7 +76,8 @@ export function DataTable({ project, onChange, t, onClose,onAddData,onProperties
   const [skipPasteErrors, setSkipPasteErrors] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
   const series=newSeriesDraft?undefined:project.series.find(item=>item.id===seriesId)
-  const dataset = series&&project.datasets.find(item => item.id === series.datasetId)
+  const dataset = newSeriesDraft?undefined:project.datasets.find(item => item.id === (series?.datasetId??(seriesId.startsWith('dataset:')?seriesId.slice(8):'')))
+  const unplotted=useMemo(()=>{const curves=seriesByDataset(project.series);return project.datasets.filter(d=>!curves.has(d.id))},[project.datasets,project.series])
   const derived = dataset?.role === 'derived'
   const points = dataset?.points ?? []
   const indices=useMemo(()=>pointIndex(points),[points])
@@ -241,8 +245,8 @@ export function DataTable({ project, onChange, t, onClose,onAddData,onProperties
   return <section className="panel data-panel" role="dialog" aria-labelledby={titleId} onPaste={paste}>
     <div className="panel-header"><h2 id={titleId}>{t('table.title')}</h2><button type="button" aria-label={t('common.close')} onClick={onClose}>×</button></div>
     <div className="panel-body data-table-body">
-    <div className="data-context"><label className="field">{t('table.dataset')}<select aria-label={t('table.dataset')} value={newSeriesDraft?'draft':series?.id || ''} disabled={!project.series.length} onChange={event => { setSeriesId(event.target.value);cancelRow();setSelectedPointId('');setEditing(null);setScrollTop(0); if (scroller.current) scroller.current.scrollTop = 0 }}>
-      {(!series||newSeriesDraft)&&<option value={newSeriesDraft?'draft':''}>{t(newSeriesDraft?'table.manualSeries':'table.noData')}</option>}{project.series.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}
+    <div className="data-context"><label className="field">{t('table.dataset')}<select aria-label={t('table.dataset')} value={newSeriesDraft?'draft':series?.id || (dataset?`dataset:${dataset.id}`:'')} disabled={!project.datasets.length} onChange={event => { setSeriesId(event.target.value);cancelRow();setSelectedPointId('');setEditing(null);setScrollTop(0); if (scroller.current) scroller.current.scrollTop = 0 }}>
+      {(!dataset||newSeriesDraft)&&<option value={newSeriesDraft?'draft':''}>{t(newSeriesDraft?'table.manualSeries':'table.noData')}</option>}{project.series.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}{unplotted.map(d=><option key={d.id} value={`dataset:${d.id}`}>{d.name}</option>)}
     </select></label>
     <div className="data-meta"><span className="data-badge">{t(derived?'table.calculated':'table.raw')}</span><span>{t('table.rowCount')}: {points.length}</span>{onProperties&&<button type="button" className="icon-button" aria-label={t('table.properties')} title={t('table.properties')} disabled={!series} onClick={()=>series&&onProperties(series.id)}><SlidersHorizontal size={16}/></button>}</div>
     <button className="data-add-menu" type="button" aria-expanded={addMenu} onClick={()=>setAddMenu(value=>!value)}><Plus size={16}/>{t('table.addData')}<ChevronDown size={14}/></button>

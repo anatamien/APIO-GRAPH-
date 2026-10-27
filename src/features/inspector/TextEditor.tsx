@@ -1,4 +1,6 @@
 import {useRef,useState} from 'react';
+import {Omega} from 'lucide-react';
+import {showSymbols} from './symbols';
 import type {TextPart} from '../../domain/model';
 import {formatTextRange,replaceText} from '../../domain/textEditing';
 import {Field,type T} from '../../app/controls';
@@ -13,6 +15,7 @@ export function TextEditor({parts,onChange,t}:{parts:TextPart[];onChange:(parts:
   <div className="text-format-tools" role="toolbar" aria-label={t('selectedFormatting')}>
    {(['sub','super','normal'] as const).map((baseline,i)=><button type="button" key={baseline} disabled={selection.start===selection.end} aria-label={t(['subscript','superscript','normalText'][i])} title={t(['subscript','superscript','normalText'][i])} aria-pressed={selected.length>0&&selected.every(p=>p.baseline===baseline)} onMouseDown={e=>e.preventDefault()} onClick={()=>apply({baseline})}>{['x₂','x²','x'][i]}</button>)}
    {(['bold','italic'] as const).map(key=><button type="button" key={key} disabled={selection.start===selection.end} aria-label={t(key)} title={t(key)} aria-pressed={selected.length>0&&selected.every(p=>p[key])} onMouseDown={e=>e.preventDefault()} onClick={()=>apply({[key]:!selected.every(p=>p[key])})} style={{fontWeight:key==='bold'?700:400,fontStyle:key==='italic'?'italic':undefined}}>{key==='bold'?'B':'I'}</button>)}
+   <button type="button" aria-label={t('symbols')} title={t('symbols')} onMouseDown={e=>e.preventDefault()} onClick={showSymbols}><Omega size={16}/></button>
   </div><p className="muted">{t('selectTextHint')}</p>
  </section>;
 }

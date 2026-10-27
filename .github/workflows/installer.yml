@@ -20,17 +20,21 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
-      - run: pnpm tauri build --ci --bundles nsis -- --locked
+      - name: Build without local profile paths
+        shell: pwsh
+        run: |
+          $env:RUSTFLAGS = "--remap-path-prefix=$env:USERPROFILE=/build-user --remap-path-prefix=$($PWD.Path)=/apio-graph"
+          pnpm tauri build --ci --bundles nsis -- --locked
       - name: Prepare download and checksum
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path release-artifacts | Out-Null
-          Copy-Item -LiteralPath 'src-tauri/target/release/bundle/nsis/APIO GRAPH_1.0.0_x64-setup.exe' -Destination 'release-artifacts/APIO-GRAPH-1.0.0-windows-x64-offline-setup.exe'
-          $artifact = Get-Item -LiteralPath 'release-artifacts/APIO-GRAPH-1.0.0-windows-x64-offline-setup.exe'
+          Copy-Item -LiteralPath 'src-tauri/target/release/bundle/nsis/APIO GRAPH_1.2.0_x64-setup.exe' -Destination 'release-artifacts/APIO-GRAPH-1.2.0-windows-x64-offline-setup.exe'
+          $artifact = Get-Item -LiteralPath 'release-artifacts/APIO-GRAPH-1.2.0-windows-x64-offline-setup.exe'
           $checksum = (Get-FileHash -LiteralPath $artifact.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content -LiteralPath release-artifacts/SHA256SUMS.txt -Encoding utf8 -Value "$checksum  $($artifact.Name)"
       - uses: actions/upload-artifact@v4
         with:
-          name: APIO-GRAPH-1.0.0-windows-x64-offline
+          name: APIO-GRAPH-1.2.0-windows-x64-offline
           path: release-artifacts/
           retention-days: 14

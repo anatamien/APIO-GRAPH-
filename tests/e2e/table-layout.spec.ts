@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {test,expect,type Page} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {addPairs,createProject,makeSeries} from '../../src/domain/model';
@@ -22,5 +23,5 @@ test('table file append and cancel leave the other open graph intact',async({pag
  let chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Добавить данные к графику',exact:true}).click();await page.getByRole('button',{name:'Из файла',exact:true}).click();await(await chooser).setFiles({name:'new.txt',mimeType:'text/plain',buffer:Buffer.from('2 3\n3 4')});
  await expect(page.locator('.import-destination')).toHaveCount(0);await page.getByRole('button',{name:'Закрыть',exact:true}).click();await expect(header(page,'Отменить')).toBeDisabled();await expect(page.getByRole('tab')).toHaveCount(1);
  await header(page,'Таблица').click();chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Добавить данные к графику',exact:true}).click();await page.getByRole('button',{name:'Из файла',exact:true}).click();await(await chooser).setFiles({name:'new.txt',mimeType:'text/plain',buffer:Buffer.from('2 3\n3 4')});await page.getByRole('button',{name:'Построить',exact:true}).click();
- const pending=page.waitForEvent('download');await header(page,'Сохранить').click();const saved=JSON.parse(await readFile((await(await pending).path())!,'utf8'));expect(saved.datasets).toHaveLength(2);expect(saved.datasets[0]).toEqual(p.datasets[0]);expect(saved.viewport).toEqual(p.viewport);await expect(page.getByRole('tab')).toHaveCount(1);
+ const pending=page.waitForEvent('download');await header(page,'Сохранить').click();const saved=await downloadedGraph(await readFile((await(await pending).path())!));expect(saved.datasets).toHaveLength(2);expect(saved.datasets[0]).toEqual(p.datasets[0]);expect(saved.viewport).toEqual(p.viewport);await expect(page.getByRole('tab')).toHaveCount(1);
 });

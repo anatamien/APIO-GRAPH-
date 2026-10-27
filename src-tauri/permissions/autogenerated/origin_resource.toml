@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-origin-resource"
+description = "Enables the origin_resource command without any pre-configured scope."
+commands.allow = ["origin_resource"]
+
+[[permission]]
+identifier = "deny-origin-resource"
+description = "Denies the origin_resource command without any pre-configured scope."
+commands.deny = ["origin_resource"]

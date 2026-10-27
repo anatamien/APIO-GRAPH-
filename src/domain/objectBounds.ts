@@ -1,3 +1,4 @@
+import {layoutTable} from './diagramTable';
 import type {DrawObject,ProjectDocument,XY} from './model';
 import {anchorPixel,textRotation,type Coordinates} from './geometry';
 import {layoutText,calloutRoute} from './textGeometry';
@@ -6,6 +7,7 @@ export function boundsOf(points:XY[],padding=0):ScreenBounds{return {left:Math.m
 /** Shares exact text layout and leader routing with the scientific SVG renderer. */
 export function objectBounds(p:ProjectDocument,o:DrawObject,c:Coordinates):ScreenBounds{
  const a=anchorPixel(p,o.anchors[0],c),b=anchorPixel(p,o.anchors[1]??o.anchors[0],c),points:XY[]=[],pad=o.style.strokeWidthPt*2/3+1;
+ if(o.type==='table'&&o.table){const layout=layoutTable(o.table,o.style);return {left:a.x-pad,top:a.y-pad,right:a.x+(o.geometry.widthPx??layout.width)+pad,bottom:a.y+(o.geometry.heightPx??layout.height)+pad}}
  if(o.type==='text'||o.type==='callout'){
   const at=o.type==='text'?a:{x:b.x+6,y:b.y-6},box=layoutText(o).bounds,angle=textRotation(p,o.id),r=angle*Math.PI/180,cos=Math.cos(r),sin=Math.sin(r);
   for(const x of [box.x,box.x+box.width])for(const y of [box.y,box.y+box.height])points.push({x:at.x+x*cos-y*sin,y:at.y+x*sin+y*cos});

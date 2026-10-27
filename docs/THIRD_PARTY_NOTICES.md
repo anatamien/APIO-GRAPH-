@@ -4,6 +4,21 @@ Versions below correspond to pnpm-lock.yaml. System fonts are not distributed.
 
 APIO GRAPH itself is GPL-3.0-only. Dependencies retain their own licenses. Original notices for the Windows distribution are in [licenses/README.md](licenses/README.md) and installed with the application. WebView2 is separately licensed by Microsoft and redistributed through its unmodified signed offline installer; it is not covered by the APIO GRAPH GPL.
 
+## Native Origin decoder
+
+The optional Windows structural Origin importer contains a modified source subset
+of liborigin 3.0.3, upstream commit
+`b636dba77ba709369db94f11ddf061f6d5a8410c`, from
+https://sourceforge.net/p/liborigin/git/ci/b636dba77ba709369db94f11ddf061f6d5a8410c/tree/.
+Original copyright and SPDX notices are retained in `src-tauri/native/origin/liborigin`.
+The applicable source grants GPL-2.0-or-later, GPL-3.0-or-later, or a choice of
+GPL-2.0-only/GPL-3.0-only for tree.hh; APIO selects GPLv3 for this combined distribution.
+The GPLv3 license is installed in `licenses/liborigin/COPYING`. Corresponding
+source, APIO modifications and build instructions are provided in
+`src-tauri/native/origin/liborigin/APIO-PATCHES.md` and its adjacent source files.
+The helper is built from those sources and embedded during the application build;
+no user Origin project is included in the distribution.
+
 ## JavaScript packages
 
 | Package | Version | License |

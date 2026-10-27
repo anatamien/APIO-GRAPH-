@@ -1,3 +1,4 @@
+import {downloadedGraph} from './projectDownload';
 import {enterEditor} from './helpers';
 import {test,expect} from '@playwright/test';
 import {createProject,addPairs,makeObject} from '../../src/domain/model';
@@ -40,7 +41,7 @@ test('IMP-T15/QUA-004 100k CSV import and preparation <=5s, every observation re
  await expect.poll(()=>page.evaluate(async()=>{const modulePath='/src/platform/files.ts';const {readRecovery}=await import(modulePath);const recovery=await readRecovery();return recovery?JSON.parse(recovery.text).datasets[0]?.points.length:0})).toBe(100000);
  page.on('dialog',dialog=>dialog.accept());await page.reload();await page.getByRole('button',{name:'Восстановить',exact:true}).click();await expect(page.getByTestId('chart')).toHaveAttribute('data-raw-point-count','100000');await expect(page.getByRole('alertdialog')).toHaveCount(0);
  const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();
- const saved=JSON.parse(await readFile((await(await pending).path())!,'utf8'));
+ const saved=await downloadedGraph(await readFile((await(await pending).path())!));
  expect(saved.datasets[0].points).toHaveLength(points.length);expect(saved.datasets[0].points[99999].x).toBe(points[99999].x);expect(saved.datasets[0].points[99999].y).toBe(points[99999].y);
 });
 
@@ -56,7 +57,7 @@ test('QUA 1m observations load with simplified display and exact source retained
  await expect(page.getByTestId('chart')).toHaveAttribute('data-raw-point-count','1000000');
  await testInfo.attach('million-performance.json',{body:JSON.stringify({preparedMs,displayed,sourcePoints:1000000,sourceBytes:buffer.length}),contentType:'application/json'});
  const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();
- const saved=JSON.parse(await readFile((await(await pending).path())!,'utf8'));
+ const saved=await downloadedGraph(await readFile((await(await pending).path())!));
  expect(saved.datasets[0].points).toHaveLength(1000000);expect(saved.datasets[0].points[999999]).toEqual(fixture.datasets[0].points[999999]);
 });
 
@@ -68,5 +69,5 @@ test('IMP large preview remains cancelable and canceled parsing commits no data'
  expect(performance.now()-start).toBeLessThan(1500);
  await expect(page.locator('[data-series]')).toHaveCount(0);await expect(page.locator('header')).toHaveCount(0);await expect(page.getByTestId('chart')).toHaveCount(0);await enterEditor(page);await expect(page.locator('header').getByRole('button',{name:'Отменить',exact:true})).toBeDisabled();
  const pending=page.waitForEvent('download');await page.locator('header').getByRole('button',{name:'Сохранить',exact:true}).click();
- const saved=JSON.parse(await readFile((await(await pending).path())!,'utf8'));expect(saved.datasets).toEqual([]);
+ const saved=await downloadedGraph(await readFile((await(await pending).path())!));expect(saved.datasets).toEqual([]);
 });

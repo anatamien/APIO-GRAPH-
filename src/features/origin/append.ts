@@ -1,0 +1,15 @@
+import {id,type ProjectDocument} from '../../domain/model';
+import {plotAreas,syncArea,type PlotArea} from '../../domain/plotAreas';
+/** Only newly imported branches are copied; existing measurement arrays stay shared. */
+export function appendOrigin(base:ProjectDocument,source:ProjectDocument):ProjectDocument{
+ const datasets=new Map(source.datasets.map(d=>[d.id,id()])),series=new Map(source.series.map(s=>[s.id,id()])),objects=new Map(source.objects.map(o=>[o.id,id()]));
+ const next:ProjectDocument={...base,datasets:[...base.datasets,...source.datasets.map(d=>({...d,id:datasets.get(d.id)!}))],series:[...base.series,...source.series.map((s,i)=>({...s,id:series.get(s.id)!,datasetId:datasets.get(s.datasetId)!,order:base.series.length+i}))],objects:[...base.objects,...source.objects.map(o=>({...o,id:objects.get(o.id)!,anchors:o.anchors.map(a=>a.mode==='point'?{...a,datasetId:datasets.get(a.datasetId)??a.datasetId}:a)}))],extensions:{...base.extensions}};
+ const breaks={...base.extensions.lineBreaks as Record<string,string[]>};for(const [old,ids]of Object.entries(source.extensions.lineBreaks as Record<string,string[]>??{}))breaks[datasets.get(old)!]=ids;next.extensions.lineBreaks=breaks;
+ const interpolation={...base.extensions.seriesInterpolation as Record<string,string>};for(const [old,method]of Object.entries(source.extensions.seriesInterpolation as Record<string,string>??{}))interpolation[series.get(old)!]=method;next.extensions.seriesInterpolation=interpolation;
+ const units={...base.extensions.datasetUnits as Record<string,{x:string;y:string}>};for(const [old,unit]of Object.entries(source.extensions.datasetUnits as Record<string,{x:string;y:string}>??{}))units[datasets.get(old)!]=unit;next.extensions.datasetUnits=units;
+ const rotations={...base.extensions.textRotation as Record<string,number>};for(const [old,angle]of Object.entries(source.extensions.textRotation as Record<string,number>??{}))rotations[objects.get(old)!]=angle;next.extensions.textRotation=rotations;
+ const snapshots={...base.extensions.importedSnapshots as Record<string,unknown>};for(const [old,snapshot]of Object.entries(source.extensions.importedSnapshots as Record<string,unknown>??{}))snapshots[datasets.get(old)!]=snapshot;next.extensions.importedSnapshots=snapshots;
+ const imports=base.extensions.originImports as unknown[]|undefined;next.extensions.originImports=[...(imports??[]),{...source.extensions.originImport as object,datasetIds:Object.fromEntries(datasets)}];
+ const incoming=plotAreas(source);if(incoming){const current=plotAreas(syncArea(base));const original:PlotArea={id:id(),name:base.project.title,frame:[.12,.08,.95,.88],axes:base.axes,viewport:base.viewport,seriesIds:base.series.map(s=>s.id),objectIds:base.objects.map(o=>o.id),legend:base.legend};next.extensions.plotAreas={version:1,activeId:current?.activeId??original.id,areas:[...(current?.areas??[original]),...incoming.areas.map(a=>({...a,id:id(),seriesIds:a.seriesIds.map(old=>series.get(old)!),objectIds:a.objectIds.map(old=>objects.get(old)!)}))]}}
+ return syncArea(next);
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-save-passive-bytes"
+description = "Enables the save_passive_bytes command without any pre-configured scope."
+commands.allow = ["save_passive_bytes"]
+
+[[permission]]
+identifier = "deny-save-passive-bytes"
+description = "Denies the save_passive_bytes command without any pre-configured scope."
+commands.deny = ["save_passive_bytes"]

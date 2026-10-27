@@ -20,7 +20,7 @@ export function fitContent(p:ProjectDocument,width:number,height:number,availabl
   markerRadius=Math.max(markerRadius,s.mode==='line'?s.style.strokeWidthPt:s.style.markerSizePt);
   for(const pt of p.datasets.find(d=>d.id===s.datasetId)?.points??[])add(pt);
  }
- const objects=p.objects.filter(o=>o.visible&&o.type!=='line'&&o.anchors.some(a=>a.mode!=='page'));
+ const objects=p.objects.filter(o=>o.visible&&o.type!=='line'&&o.type!=='table'&&o.anchors.some(a=>a.mode!=='page'));
  const glyphSizes=new Map(objects.filter(o=>['text','callout'].includes(o.type)&&o.anchors[o.type==='callout'?1:0]?.mode!=='page').map(o=>{const b=layoutText(o).bounds,r=textRotation(p,o.id)*Math.PI/180;return [o.id,{width:Math.abs(b.width*Math.cos(r))+Math.abs(b.height*Math.sin(r)),height:Math.abs(b.width*Math.sin(r))+Math.abs(b.height*Math.cos(r))}]}));
  for(const o of objects)for(const a of o.anchors)if(a.mode!=='page'){const at=resolveAnchor(p,a);if(o.type!=='range-y'&&Number.isFinite(at.x)){xMin=Math.min(xMin,at.x);xMax=Math.max(xMax,at.x)}if(o.type!=='range-x'&&Number.isFinite(at.y)){yMin=Math.min(yMin,at.y);yMax=Math.max(yMax,at.y)}}
  if(p.legend.visible&&p.legend.anchor.mode!=='page')add(resolveAnchor(p,p.legend.anchor));
