@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 — 2026-10-27
+
+- Fit Origin worksheet and matrix row-number columns to the complete row index, including large tables and larger interface text. Numeric source values and graph geometry are unchanged.
+
 ## 1.2.0 — 2026-10-27
 
 Data, analysis and portable workspaces. Includes the earlier 1.1 data/results milestone.
