@@ -23,7 +23,7 @@ test('SYS-T03/EDT/EXP localized controls, source markers, aspect ratio and syste
 test('OBJ-T11 percentage opacity and text rotation persist through aph',async({page})=>{
  const p=createProject(),o=makeObject('text',[{mode:'page',pageX:0.3,pageY:0.35}],'User label ρ');p.objects.push(o);
  await page.goto('/');await enterEditor(page);await page.locator('input[type=file]').setInputFiles({name:'rotation.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});
- await page.locator(`[data-object="${o.id}"] text`).click();
+ await page.locator(`[data-object="${o.id}"] text`).dblclick();
  for(const [name,value]of[['Поворот, °','45'],['Непрозрачность, %','20']]){await page.getByLabel(name,{exact:true}).fill(value);await page.getByLabel(name,{exact:true}).press('Tab')}
  await expect(page.locator(`[data-object="${o.id}"] text`)).toHaveAttribute('transform',/rotate\(45 /);
  await page.locator(`[data-object="${o.id}"] text`).click();await page.keyboard.press('Control+d');await expect(page.locator('[data-object]')).toHaveCount(2);

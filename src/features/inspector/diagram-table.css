@@ -19,7 +19,7 @@
 
 .page-object-overlay .table-cell-editor{pointer-events:auto}
 
-.axis-copy-button{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px}.inline-axis .axis-copy-button{width:100%;margin-top:5px}.object-transfer{border-bottom:1px solid var(--line);padding:2px 0 10px;margin-bottom:10px}.object-transfer summary{cursor:pointer;font-size:12px;font-weight:500}.object-transfer p{font-size:11px;line-height:1.45}.object-transfer .row{margin-top:8px}.object-transfer select{flex:1;min-width:0}.object-transfer .row>button{flex:none;min-width:32px;padding:6px}.blank-sheet-action{margin:6px 0}
+.axis-copy-button{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px}.inline-axis .axis-copy-button{width:100%;margin-top:5px}.object-transfer{border-bottom:1px solid var(--line);padding:2px 0 10px;margin-bottom:10px}.object-transfer summary{cursor:pointer;font-size:inherit;font-weight:600}.object-transfer p{font-size:11px;line-height:1.45}.object-transfer .row{margin-top:8px}.object-transfer select{flex:1;min-width:0}.object-transfer .row>button{flex:none;min-width:32px;padding:6px}.blank-sheet-action{margin:6px 0}
 
 .table-paste-prompt{position:absolute;left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);width:min(320px,calc(100% - 24px));z-index:24}
 

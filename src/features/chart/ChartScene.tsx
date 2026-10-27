@@ -1,3 +1,4 @@
+import {sheetFrame} from '../../domain/sheetViewport';
 import {ErrorBarGeometry} from './ErrorBarGeometry';
 import {DiagramTableGeometry} from './DiagramTableGeometry';
 import {layoutTable} from '../../domain/diagramTable';
@@ -88,7 +89,7 @@ export function ObjectGeometry({p,o,c,mode='original',hitOnly=false}:{p:ProjectD
  return <><line x1={start.x} y1={start.y} x2={end.x} y2={end.y} {...common}/>{o.type==='arrow'&&<>{['start','both'].includes(st.arrowHead)&&arrow(start.x,start.y,angle+180)}{['end','both'].includes(st.arrowHead)&&arrow(end.x,end.y,angle)}</>}</>;
 }
 export const ChartScene=memo(function ChartScene({p,width,height,colorMode='original',transparent=false,screen=false,includeSeries=true,panning=false,includeAxes=true,includeObjects=true,includeLegend=true,clipId:suppliedClipId}:{p:ProjectDocument}&RenderOptions){
- if(p.extensions.documentMode==='sheet'){includeAxes=false;includeLegend=false}
+ if(p.extensions.documentMode==='sheet'){includeAxes=false;includeLegend=false;includeSeries=false}
  const generatedClipId=useId().replace(/:/g,''),clipId=suppliedClipId??generatedClipId;
  const c=useMemo(()=>createCoordinates(p,width,height),[p.viewport,p.axes,p.page.paddingPx,width,height]),xt=screen?visibleTicks(c.xTicks,Math.floor((c.right-c.left)/Math.max(36,c.xLabelWidth+14))):c.xTicks,yt=screen?visibleTicks(c.yTicks,Math.floor((c.bottom-c.top)/25)):c.yTicks;
  const scientificColors=p.extensions.scientificColors as {ink?:string;grid?:string}|undefined,ink=typeof scientificColors?.ink==='string'&&/^#[0-9a-f]{6}$/i.test(scientificColors.ink)?scientificColors.ink:'#363C43',gridColor=typeof scientificColors?.grid==='string'&&/^#[0-9a-f]{6}$/i.test(scientificColors.grid)?scientificColors.grid:'#E9EDF0';
@@ -97,7 +98,7 @@ export const ChartScene=memo(function ChartScene({p,width,height,colorMode='orig
  const object=(o:DrawObject)=><g key={o.id} data-target={`object:${o.id}`} data-object={o.id}><ObjectGeometry p={p} o={o} c={c} mode={colorMode}/>{screen&&['segment','arrow','line','callout'].includes(o.type)&&<g opacity={0} strokeWidth={14}><ObjectGeometry p={p} o={o} hitOnly c={c}/></g>}</g>;
  return <>
   <defs><clipPath data-plot-clip="true" id={clipId}><rect x={c.left} y={c.top} width={c.right-c.left} height={c.bottom-c.top}/></clipPath><pattern id="hatch" width="9" height="9" patternUnits="userSpaceOnUse"><path d="M-2 2L2-2 M0 9L9 0 M7 11L11 7" stroke="#000000" strokeWidth="0.5" fill="none"/></pattern></defs>
-  {!transparent&&<rect data-canvas-paper={themed||undefined} width={width} height={height} fill={colorMode==='strict-bw'?'#FFFFFF':outputColor(p.page.background,colorMode)}/>}
+  {!transparent&&<rect data-canvas-paper={themed||undefined} x={sheetFrame(p,width,height).x} y={sheetFrame(p,width,height).y} width={sheetFrame(p,width,height).width} height={sheetFrame(p,width,height).height} fill={colorMode==='strict-bw'?'#FFFFFF':outputColor(p.page.background,colorMode)}/>}
   <g data-canvas-ink={themed||undefined} fontFamily="Courier New" fontSize="12" fill={colorMode==='strict-bw'?'#000000':outputColor(ink,colorMode)} color={colorMode==='strict-bw'?'#000000':outputColor(ink,colorMode)}>
    {objs.filter(o=>o.zIndex<0).map(object)}
    <g data-canvas-grid={themed||undefined} stroke={colorMode==='strict-bw'?'#000000':outputColor(gridColor,colorMode)} strokeWidth={colorMode==='strict-bw'?0.4:0.7} strokeDasharray={colorMode==='strict-bw'?'1 5':undefined} pointerEvents="none">

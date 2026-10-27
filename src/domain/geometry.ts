@@ -24,8 +24,10 @@ export function autoRange(p:ProjectDocument):Viewport {
 export function fitView(p:ProjectDocument):ProjectDocument {const v=autoRange(p);return {...p,viewport:v,axes:{x:{...p.axes.x,mode:'auto',min:v.xMin,max:v.xMax},y:{...p.axes.y,mode:'auto',min:v.yMin,max:v.yMax}}}}
 interface CoordinateScale {(value:number):number;invert:(value:number)=>number}
 export interface Coordinates {x:CoordinateScale;y:CoordinateScale;left:number;right:number;top:number;bottom:number;width:number;height:number;xTicks:number[];yTicks:number[];xLabelWidth:number}
+const sheetCoordinates=new Map<string,Coordinates>();
 const coordinateCache=new WeakMap<Viewport,Map<string,Coordinates>>();
 export function createCoordinates(p:ProjectDocument,width:number,height:number):Coordinates{
+  if(p.extensions.documentMode==='sheet'){const key=width+':'+height,cached=sheetCoordinates.get(key);if(cached)return cached;const x=scaleLinear().domain([0,10]).range([0,width]),y=scaleLinear().domain([0,10]).range([height,0]),result={x,y,left:0,right:width,top:0,bottom:height,width,height,xTicks:[],yTicks:[],xLabelWidth:0};if(sheetCoordinates.size>=8)sheetCoordinates.clear();sheetCoordinates.set(key,result);return result}
   const key=JSON.stringify([width,height,p.page.paddingPx,...Object.values(p.viewport),p.extensions.plotFrame,...[p.axes.x,p.axes.y].flatMap(a=>[a.tickMode,a.tickStep,a.tickOrigin,a.numberFormat,a.precision])]);
   let cache=coordinateCache.get(p.viewport);const cached=cache?.get(key);if(cached)return cached;
   const pad=p.page.paddingPx;

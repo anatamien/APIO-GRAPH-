@@ -23,7 +23,7 @@ export function DocumentTabs({tabs,activeId,t,onSelect,onClose,onNew,onRename}:{
  const rename=(tab:GraphTab)=>{if(tab.readOnly)return;renameCancelled.current=false;setRenaming({id:tab.id,name:graphName(tab,t('graph'))})};
  const finishRename=()=>{if(!renaming)return;const name=renaming.name.trim();if(!renameCancelled.current&&name)onRename(renaming.id,name);setRenaming(null)};
  const overflowing=overflow.left||overflow.right;
- return <div className="document-tabs">
+ return <div className="document-tabs" data-tabs-menu-open={open||undefined}>
   {tabs.length>1&&<button ref={menuButton} className="all-graphs-button" aria-label={t('allGraphs')} title={t('allGraphs')} aria-expanded={open} aria-haspopup="dialog" onClick={()=>{setQuery('');setOpen(!open)}}><List size={17}/></button>}
   {overflowing&&<button className="tab-scroll" aria-label={t('previousTabs')} title={t('previousTabs')} disabled={!overflow.left} onClick={()=>scroll(-1)}><ChevronLeft size={14}/></button>}
   <div ref={list} className="tab-list" role="tablist" aria-label={t('openGraphs')} onScroll={measure} onKeyDown={e=>{

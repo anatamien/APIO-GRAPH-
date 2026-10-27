@@ -78,3 +78,6 @@
 .color-dialog-button{position:relative;display:grid;place-items:center;width:24px;height:24px;justify-self:center;align-self:center;border-radius:6px;color:var(--muted);background:var(--hover)}.color-dialog-button:focus-within{outline:2px solid var(--accent);outline-offset:2px}.color-dialog-button svg{pointer-events:none}.color-picker .color-dialog-button input[type=color]{position:absolute;inset:0;width:100%;height:100%;min-height:0;padding:0;opacity:0;cursor:pointer}
 
 .fixed-table-layer{position:absolute;inset:0;pointer-events:none;contain:layout paint;transform:translateZ(0);z-index:2}.chart-host .inline-text{z-index:12;pointer-events:auto}.page-object-overlay .inline-text{pointer-events:auto}
+
+.app:has(.document-tabs[data-tabs-menu-open=true]) .toolbar{visibility:hidden;pointer-events:none}.app:has(.document-tabs[data-tabs-menu-open=true]) .toolbar *{pointer-events:none!important}
+.object-selection-marquee{fill:#476e9812;stroke:#476E98;stroke-width:1;vector-effect:non-scaling-stroke;pointer-events:none}.object-spacing-label{stroke:none;fill:#476E98;font:11px system-ui;paint-order:stroke;stroke-width:3px}.object-spacing-guides{stroke-dasharray:none}

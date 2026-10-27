@@ -14,6 +14,11 @@ function movableBounds(p:ProjectDocument,o:ProjectDocument['objects'][number],c:
 
 /** One data scan, then a bounded pixel-space refinement; never edits scientific data. */
 export function fitContent(p:ProjectDocument,width:number,height:number,available:Partial<ScreenBounds>={}):Viewport{
+ if(p.extensions.documentMode==='sheet'){
+  const c=createCoordinates(p,width,height),boxes=p.objects.filter(o=>o.visible&&o.type!=='line').map(o=>objectBounds(p,o,c));if(!boxes.length)return p.viewport;
+  const left=Math.min(...boxes.map(b=>b.left)),right=Math.max(...boxes.map(b=>b.right)),top=Math.min(...boxes.map(b=>b.top)),bottom=Math.max(...boxes.map(b=>b.bottom)),safe={left:available.left??0,right:available.right??width,top:available.top??0,bottom:available.bottom??height},factor=Math.max((right-left)/Math.max(1,safe.right-safe.left-48),(bottom-top)/Math.max(1,safe.bottom-safe.top-48),.05),x=(left+right)/2-(safe.left+safe.right-width)/2*factor,y=(top+bottom)/2-(safe.top+safe.bottom-height)/2*factor;
+  return{xMin:(x-width*factor/2)/width*10,xMax:(x+width*factor/2)/width*10,yMin:10-(y+height*factor/2)/height*10,yMax:10-(y-height*factor/2)/height*10};
+ }
  let xMin=Infinity,xMax=-Infinity,yMin=Infinity,yMax=-Infinity;
  const add=(a:XY)=>{if(Number.isFinite(a.x)&&Number.isFinite(a.y)){xMin=Math.min(xMin,a.x);xMax=Math.max(xMax,a.x);yMin=Math.min(yMin,a.y);yMax=Math.max(yMax,a.y)}};
  let markerRadius=2;

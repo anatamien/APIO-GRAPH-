@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.2 — 2026-10-27
+
+- Select multiple drawing objects with a marquee and move unlocked members together in one Undo step. Drawing properties open on double-click, leaving a single click available for selection, moving and copying.
+- Snap text, tables and other drawings to neighbouring edges/centers; show equal-spacing guides and distances. Alt bypasses snapping.
+- Delete/Backspace clears selected table cell contents without deleting the table or changing cell formatting/IDs.
+- Blank sheets have an unbounded pan/zoom camera, out-of-page object placement, F9, APH persistence and finite-view export. Older sheets retain their previous page-object placement.
+- Hide tools while the open-tabs menu is displayed, match Send to tab section typography, and remove the table keyboard-help paragraph.
+
 ## 1.3.1 — 2026-10-27
 
 - Scientific presets grow table cells when their inherited font increases, preserving text, cell settings, IDs and anchors.

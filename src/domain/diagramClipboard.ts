@@ -1,10 +1,12 @@
 import {createProject,id,schemaAtLeast,type DrawObject,type ProjectDocument} from './model';
 import {anchorPixel,textRotation,type Coordinates} from './geometry';
 import {validateProject} from './project';
+import {sheetFrame} from './sheetViewport';
 const FORMAT='APIO_DIAGRAM_OBJECTS',rotations=new WeakMap<DrawObject[],Record<string,number>>();
 /** Clipboard drawings carry no datasets or external point references. */
 export function copyDiagramObjects(p:ProjectDocument,objects:DrawObject[],c:Coordinates):string{
- return JSON.stringify({format:FORMAT,version:1,rotations:Object.fromEntries(objects.map(o=>[o.id,textRotation(p,o.id)])),objects:objects.map(o=>({...o,anchors:o.anchors.map(a=>{if(a.mode==='page')return a;const at=anchorPixel(p,a,c);return{mode:'page',pageX:Math.max(0,Math.min(1,at.x/c.width)),pageY:Math.max(0,Math.min(1,at.y/c.height))}})}))});
+ const frame=sheetFrame(p,c.width,c.height);
+ return JSON.stringify({format:FORMAT,version:1,rotations:Object.fromEntries(objects.map(o=>[o.id,textRotation(p,o.id)])),objects:objects.map(o=>({...o,anchors:o.anchors.map(a=>{if(a.mode==='page'&&p.extensions.documentMode!=='sheet')return a;const at=anchorPixel(p,a,c);return{mode:'page',pageX:Math.max(0,Math.min(1,(at.x-frame.x)/frame.width)),pageY:Math.max(0,Math.min(1,(at.y-frame.y)/frame.height))}})}))});
 }
 export function pasteDiagramObjects(text:string):DrawObject[]|null{
  if(!text.trimStart().startsWith('{')||!text.slice(0,100).includes(FORMAT))return null;
@@ -15,4 +17,4 @@ export function pasteDiagramObjects(text:string):DrawObject[]|null{
  const angles:Record<string,number>={};for(let i=0;i<objects.length;i++){const angle=value.rotations?.[p.objects[i].id];if(angle===undefined)continue;if(typeof angle!=='number'||!Number.isFinite(angle)||Math.abs(angle)>360)throw new Error('CLIPBOARD_OBJECT_INVALID');if(angle)angles[objects[i].id]=angle}rotations.set(objects,angles);return objects;
 }
 
-export function appendDiagramObjects(p:ProjectDocument,objects:DrawObject[]):ProjectDocument{const angles=rotations.get(objects),old=p.extensions.textRotation;return{...p,schemaVersion:objects.some(o=>o.table)?schemaAtLeast(p.schemaVersion,objects.some(o=>o.table?.cells.some(c=>c.numberFormat))?'1.3.0':'1.2.0'):p.schemaVersion,objects:[...p.objects,...objects.map((o,i)=>({...o,zIndex:p.objects.reduce((n,o)=>Math.max(n,o.zIndex),0)+i+1}))],extensions:angles&&Object.keys(angles).length?{...p.extensions,textRotation:{...(old&&typeof old==='object'?old:{}),...angles}}:p.extensions}}
+export function appendDiagramObjects(p:ProjectDocument,objects:DrawObject[]):ProjectDocument{const angles=rotations.get(objects),old=p.extensions.textRotation,view=p.viewport;return{...p,schemaVersion:objects.some(o=>o.table)?schemaAtLeast(p.schemaVersion,objects.some(o=>o.table?.cells.some(c=>c.numberFormat))?'1.3.0':'1.2.0'):p.schemaVersion,objects:[...p.objects,...objects.map((o,i)=>({...o,...(p.extensions.documentMode==='sheet'?{anchors:o.anchors.map(a=>a.mode==='page'?{mode:'data' as const,x:view.xMin+a.pageX*(view.xMax-view.xMin),y:view.yMax-a.pageY*(view.yMax-view.yMin)}:a)}:{}),zIndex:p.objects.reduce((n,o)=>Math.max(n,o.zIndex),0)+i+1}))],extensions:angles&&Object.keys(angles).length?{...p.extensions,textRotation:{...(old&&typeof old==='object'?old:{}),...angles}}:p.extensions}}

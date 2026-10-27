@@ -46,7 +46,7 @@ test('tiny points have a generous hit area and hidden series remain editable fro
 });
 
 test('text inspector omits line controls and adding text runs while preserving existing rich text',async({page})=>{
- const p=createProject(),o=makeObject('text',[{mode:'page',pageX:.3,pageY:.4}],'Normal');o.text.push({text:'2',baseline:'super',bold:true,italic:false});p.objects=[o];await open(page,p);await page.locator('[data-object] text').click();
+ const p=createProject(),o=makeObject('text',[{mode:'page',pageX:.3,pageY:.4}],'Normal');o.text.push({text:'2',baseline:'super',bold:true,italic:false});p.objects=[o];await open(page,p);await page.locator('[data-object] text').dblclick();
  const panel=page.locator('.inspector');await expect(panel.getByLabel('Штрих',{exact:true})).toHaveCount(0);await expect(panel.getByLabel('Толщина, pt',{exact:true})).toHaveCount(0);await expect(panel.getByRole('button',{name:'+ Текст',exact:true})).toHaveCount(0);await panel.getByLabel('Содержимое',{exact:true}).fill('Updated2');const after=await save(page);expect(after.objects[0].text).toEqual([{...o.text[0],text:'Updated'},o.text[1]]);
 });
 

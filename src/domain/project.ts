@@ -1,3 +1,4 @@
+import {migrateSheetViewport} from './sheetViewport';
 import {uncertaintyBounds} from './uncertainty';
 import {validateTable} from './diagramTable';
 import {validateAreas,syncArea} from './plotAreas';
@@ -110,7 +111,7 @@ export function deserialize(text: string): {project: ProjectDocument; warnings: 
   const raw:unknown=JSON.parse(text.replace(/^\uFEFF/,'')); const v=validateProject(raw);
   if(v.errors.length)throw new Error(v.errors.join('\n'));
   // A metadata-only migration keeps every source coordinate, ID and style.
-  const p=raw as ProjectDocument,project=p.schemaVersion.startsWith('1.0.')?{...p,schemaVersion:PROJECT_SCHEMA_VERSION}:p;
+  const p=raw as ProjectDocument,project=migrateSheetViewport(p.schemaVersion.startsWith('1.0.')?{...p,schemaVersion:PROJECT_SCHEMA_VERSION}:p);
   // Both schemas have identical legacy branches. Metadata-only migration must
   // preserve validation reuse, including the first edit of a million-point file.
   if(project!==p)validatedProjects.add(project);
