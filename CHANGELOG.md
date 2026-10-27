@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1 — 2026-10-27
+
+- Scientific presets grow table cells when their inherited font increases, preserving text, cell settings, IDs and anchors.
+- Includes the complete 1.3 feature package below.
+
 ## 1.3.0 — 2026-10-27
 
 - Bounded Gaussian, Lorentzian and normalized pseudo-Voigt peak fitting, including overlap, fixed parameters, bounds, optional baselines, full-data Worker computation and independent component/residual curves. Numerical comparisons cover SciPy TRF and NIST Gauss1.

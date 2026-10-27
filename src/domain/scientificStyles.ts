@@ -1,5 +1,6 @@
 import {schemaAtLeast,type Axis,type ProjectDocument,type SeriesStyle} from './model';
 import {plotAreas,syncArea} from './plotAreas';
+import {growTableContent,layoutTable,scaleTable} from './diagramTable';
 export const STYLE_LIMIT=256*1024;
 const axisKeys=['strokeWidthPt','labelSizePt','grid','minorDivisions','numberFormat','precision'] as const;
 type AxisStyle=Pick<Axis,typeof axisKeys[number]>;
@@ -33,7 +34,8 @@ export function applyScientificStyle(p:ProjectDocument,style:ScientificStyle,{se
  const series=p.series.map(s=>{if(scope&&!scope.has(s.id))return s;const i=positions.get(s.id)!,source=style.curves[i%style.curves.length],{stroke,markerFill,markerStroke,...other}=source;return{...s,style:{...s.style,...other,...(palette?{stroke,markerFill,markerStroke}:{}),...(style.monochrome?{dash:(['solid','dash','dot','dash-dot'] as const)[i%4],markerShape:(['circle','square','triangle','diamond','cross','plus'] as const)[(i+Math.floor(i/4))%6]}:{})}}});
  if(scope)return{...p,series};
  const axes={x:{...p.axes.x,...style.axes.x},y:{...p.axes.y,...style.axes.y}},layout=plotAreas(p),extensions={...p.extensions,canvasTheme:'source',scientificColors:{...style.colors},legendStyle:{...style.legend},exportProfile:{...style.export},...(layout?{plotAreas:{...layout,areas:layout.areas.map(a=>({...a,axes:{x:{...a.axes.x,...style.axes.x},y:{...a.axes.y,...style.axes.y}},legendStyle:{...style.legend}}))}}:{})};
- return syncArea({...p,schemaVersion:schemaAtLeast(p.schemaVersion,'1.3.0'),page:{...style.page},axes,series,objects:p.objects.map(o=>['text','callout','table'].includes(o.type)?{...o,style:{...o.style,fontSizePt:style.textSizePt}}:o),extensions});
+ const objects=p.objects.map(o=>{if(!['text','callout','table'].includes(o.type))return o;const appearance={...o.style,fontSizePt:style.textSizePt};if(o.table&&o.style.fontSizePt!==appearance.fontSizePt){const layout=layoutTable(o.table,o.style),table=o.geometry.widthPx!==undefined||o.geometry.heightPx!==undefined?scaleTable(o.table,o.geometry.widthPx??layout.width,o.geometry.heightPx??layout.height):o.table;return{...o,style:appearance,table:growTableContent(table,appearance),geometry:{}}}return{...o,style:appearance}});
+ return syncArea({...p,schemaVersion:schemaAtLeast(p.schemaVersion,'1.3.0'),page:{...style.page},axes,series,objects,extensions});
 }
 const storageKey='apio.scientific-styles.v1';
 export function loadScientificStyles():ScientificStyle[]{try{const raw=localStorage.getItem(storageKey);if(!raw||raw.length>STYLE_LIMIT*20)return[];const values=JSON.parse(raw);return Array.isArray(values)?values.slice(0,20).flatMap(v=>{try{return[readScientificStyle(JSON.stringify(v))]}catch{return[]}}):[]}catch{return[]}}
