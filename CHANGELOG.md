@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.3 — 2026-10-27
+
+- Resize infinite-sheet tables at negative coordinates without jumping to the old page edge. Legacy page-anchored table corners convert to sheet coordinates when resized beyond that boundary.
+- Includes the complete object-selection and table workflow improvements below.
+
 ## 1.3.2 — 2026-10-27
 
 - Select multiple drawing objects with a marquee and move unlocked members together in one Undo step. Drawing properties open on double-click, leaving a single click available for selection, moving and copying.
