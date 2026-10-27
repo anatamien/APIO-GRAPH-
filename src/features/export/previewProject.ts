@@ -5,7 +5,7 @@ import {displayPoints} from '../chart/displayPoints';
 
 /** Export only numerical geometry, visible summaries and styling, no provenance. */
 export function renderProject(p:ProjectDocument):ProjectDocument{
- const extensions=Object.fromEntries(['textRotation','plotAreas','lineBreaks','seriesInterpolation','canvasTheme'].filter(key=>p.extensions[key]!==undefined).map(key=>[key,p.extensions[key]]));
+ const extensions=Object.fromEntries(['textRotation','plotAreas','lineBreaks','seriesInterpolation','canvasTheme','documentMode','scientificColors','legendStyle','axisDisplay','plotFrame'].filter(key=>p.extensions[key]!==undefined).map(key=>[key,p.extensions[key]]));
  return {...p,extensions,calculations:p.calculations.map((c):Calculation=>({...c,parameters:c.kind==='area'?Object.fromEntries(['range','baselineDatasetId','sortCopy','duplicates','sourceUnits'].filter(key=>key in c.parameters).map(key=>[key,c.parameters[key]])):{},summary:c.kind==='area'?{integral:c.summary.integral}:{}}))};
 }
 

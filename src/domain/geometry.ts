@@ -1,3 +1,4 @@
+import {uncertaintyBounds} from './uncertainty';
 import { scaleLinear } from 'd3-scale';
 import { quadtree } from 'd3-quadtree';
 import type { Anchor, Axis, ProjectDocument, XY, Point, Viewport } from './model';
@@ -14,7 +15,7 @@ export function resolveAnchor(p:ProjectDocument,a:Anchor):XY {
 }
 export function autoRange(p:ProjectDocument):Viewport {
   let xMin=Infinity,xMax=-Infinity,yMin=Infinity,yMax=-Infinity;
-  for(const s of p.series)if(s.visible&&s.includeInAutoRange&&!p.calculations.some(c=>c.resultDatasetId===s.datasetId&&c.status!=='valid'))for(const pt of p.datasets.find(d=>d.id===s.datasetId)?.points??[]){xMin=Math.min(xMin,pt.x);xMax=Math.max(xMax,pt.x);yMin=Math.min(yMin,pt.y);yMax=Math.max(yMax,pt.y)}
+  const datasets=new Map(p.datasets.map(d=>[d.id,d])),invalid=new Set(p.calculations.filter(c=>c.status!=='valid').map(c=>c.resultDatasetId));for(const s of p.series)if(s.visible&&s.includeInAutoRange&&!invalid.has(s.datasetId)){const d=datasets.get(s.datasetId);if(!d)continue;const b=uncertaintyBounds(d,s);xMin=Math.min(xMin,b.minX);xMax=Math.max(xMax,b.maxX);yMin=Math.min(yMin,b.minY);yMax=Math.max(yMax,b.maxY)}
   if(!Number.isFinite(xMin))return {xMin:0,xMax:10,yMin:0,yMax:10};
   const pad=(a:number,b:number)=>a===b?Math.max(Math.abs(a)*0.05,0.5):(b/2-a/2)*0.1;
   const finite=(n:number)=>Math.max(-Number.MAX_VALUE,Math.min(Number.MAX_VALUE,n));

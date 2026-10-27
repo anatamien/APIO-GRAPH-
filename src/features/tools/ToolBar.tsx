@@ -8,6 +8,8 @@ import {showSymbols} from '../inspector/symbols';
 addTranslations({moreTools:['Другие инструменты','More tools'],zoom:['Увеличить масштаб','Zoom in'], 'zoom-out':['Уменьшить масштаб','Zoom out']});
 export type Tool='select'|'pan'|'zoom'|'zoom-out'|ObjectType;
 export const toolKeys:Record<string,Tool>={v:'select',h:'pan',z:'zoom',x:'zoom-out',t:'text',l:'segment',a:'arrow',c:'callout',r:'rectangle'};
+/** Physical letter positions keep editor shortcuts available in RU/EN layouts. */
+export function shortcutLetter(event:Pick<KeyboardEvent,'code'|'key'>):string{return /^Key[A-Z]$/.test(event.code)?event.code.slice(3).toLowerCase():event.key.toLowerCase()}
 const basic=[['select',MousePointer2],['pan',Hand],['zoom',ZoomIn],['zoom-out',ZoomOut],['text',Type],['segment',Minus],['line',MoveUpRight],['arrow',ArrowUpRight],['callout',MessageSquare],['rectangle',RectangleHorizontal],['table',Table2]] as const;
 const additional=[['range-x',BetweenHorizontalStart],['range-y',BetweenVerticalStart],['marker',Dot]] as const;
 export function ToolBar({tool,setTool,settings,setSettings,t,onAnalysis}:{tool:Tool;setTool:(v:Tool)=>void;settings:Settings;setSettings:(s:Settings)=>void;t:T;onAnalysis:()=>void}){

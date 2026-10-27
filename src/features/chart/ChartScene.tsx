@@ -1,10 +1,11 @@
+import {ErrorBarGeometry} from './ErrorBarGeometry';
 import {DiagramTableGeometry} from './DiagramTableGeometry';
 import {layoutTable} from '../../domain/diagramTable';
 import type {AxisDisplay} from '../../domain/plotAreas';
 import {traceGaps} from './traceGaps';
 import {memo,useMemo,useState,useId} from 'react';
 import {line,curveLinear,curveBasis,curveNatural,curveStep,curveStepBefore,curveStepAfter,symbol,symbolCircle,symbolSquare,symbolTriangle,symbolDiamond,symbolCross,symbolPlus} from 'd3-shape';
-import type {ProjectDocument,Series,Marker,DrawObject,XY,Dash,Point,Viewport} from '../../domain/model';
+import type {ProjectDocument,Series,Marker,DrawObject,XY,Dash,Point,Viewport,Dataset} from '../../domain/model';
 import {dependencyIndex} from '../../domain/dependencies';
 import {createCoordinates,minorTicks,visibleTicks,formatNumber,anchorPixel,textRotation} from '../../domain/geometry';
 import type {Coordinates} from '../../domain/geometry';
@@ -23,9 +24,9 @@ const shapes={circle:symbolCircle,square:symbolSquare,triangle:symbolTriangle,di
 const markerPaths=new Map<string,string>();
 export function markerPath(shape:Marker,size:number){const key=shape+':'+size,cached=markerPaths.get(key);if(cached!==undefined)return cached;const path=symbol(shapes[shape],Math.max(0.1,size*size*3.14))()??'';if(markerPaths.size>=256)markerPaths.clear();markerPaths.set(key,path);return path}
 export function outputColor(color:string,mode:ColorMode){if(mode==='strict-bw')return '#000000';if(mode==='grayscale'){const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16));const v=Math.round(rgb[0]*0.2126+rgb[1]*0.7152+rgb[2]*0.0722).toString(16).padStart(2,'0');return '#'+v.repeat(3)}return color}
-export function outputStyle(s:Series,index:number,mode:ColorMode){if(mode==='strict-bw')return {...s.style,stroke:'#000000',markerStroke:'#000000',markerFill:'#FFFFFF',opacity:1,dash:(['solid','dash','dot','dash-dot'] as const)[index%4],markerShape:(['circle','square','triangle','diamond','cross','plus'] as const)[index%6]};return {...s.style,stroke:outputColor(s.style.stroke,mode),markerStroke:outputColor(s.style.markerStroke,mode),markerFill:outputColor(s.style.markerFill,mode)}}
+export function outputStyle(s:Series,index:number,mode:ColorMode){if(mode==='strict-bw')return {...s.style,stroke:'#000000',markerStroke:'#000000',markerFill:Math.floor(index/24)%2?'#000000':'#FFFFFF',markerSizePt:Math.max(3,s.style.markerSizePt),opacity:1,dash:(['solid','dash','dot','dash-dot'] as const)[index%4],markerShape:(['circle','square','triangle','diamond','cross','plus'] as const)[(index+Math.floor(index/4))%6]};return {...s.style,stroke:outputColor(s.style.stroke,mode),markerStroke:outputColor(s.style.markerStroke,mode),markerFill:outputColor(s.style.markerFill,mode)}}
 interface SeriesProps {p:ProjectDocument;c:Coordinates;mode:ColorMode;screen:boolean}
-const SeriesTrace=memo(function SeriesTrace({s,all,c,view,mode,screen,margin,budget,markers,index,dense,breakIds,interpolation}:{interpolation?:string;breakIds?:string[];s:Series;all:Point[];c:Coordinates;view:Viewport;mode:ColorMode;screen:boolean;margin:number;budget:number;markers:boolean;index:number;dense:boolean}){
+const SeriesTrace=memo(function SeriesTrace({s,dataset,all,c,view,mode,screen,margin,budget,markers,index,dense,breakIds,interpolation}:{interpolation?:string;breakIds?:string[];s:Series;dataset?:Dataset;all:Point[];c:Coordinates;view:Viewport;mode:ColorMode;screen:boolean;margin:number;budget:number;markers:boolean;index:number;dense:boolean}){
  const pointMode=s.mode==='points',st=outputStyle(s,index,mode);
  const {path,paths,markerPoints,markerPixels}=useMemo(()=>{
   const {xMin,xMax,yMin,yMax}=view;
@@ -37,18 +38,22 @@ const SeriesTrace=memo(function SeriesTrace({s,all,c,view,mode,screen,margin,bud
   const markerPixels=screen?(markerPoints===pts?pixels:markerPoints.map(pt=>({x:c.x(pt.x),y:c.y(pt.y)}))):[];
   return {path,paths,markerPoints,markerPixels};
  },[all,c,view,screen,pointMode,markers,budget,margin,breakIds,interpolation]);
- const batch=screen&&mode!=='strict-bw'&&markers&&markerPoints.length>(dense?64:512);
- const batches=useMemo(()=>batch?markerBatches(markerPixels,markerPoints.map(pt=>pt.id),markerPath(st.markerShape,st.markerSizePt*.85)):[],[batch,markerPixels,markerPoints,st.markerShape,st.markerSizePt]);
+ const drawnMarkers=useMemo(()=>mode==='strict-bw'&&!pointMode?markerPoints.filter((_,j)=>j%Math.max(1,Math.ceil(markerPoints.length/80))===0):markerPoints,[markerPoints,mode,pointMode]);
+ const showMarkers=markers||mode==='strict-bw'&&!screen&&!pointMode;
+ const drawnPixels=useMemo(()=>screen&&drawnMarkers===markerPoints?markerPixels:drawnMarkers.map(pt=>({x:c.x(pt.x),y:c.y(pt.y)})),[screen,drawnMarkers,markerPoints,markerPixels,c]);
+ const batch=showMarkers&&(screen?mode!=='strict-bw'&&drawnMarkers.length>(dense?64:512):drawnMarkers.length>50000);
+ const batches=useMemo(()=>batch?markerBatches(drawnPixels,screen?drawnMarkers.map(pt=>pt.id):[],markerPath(st.markerShape,st.markerSizePt*.85),screen?128:512):[],[batch,drawnPixels,drawnMarkers,screen,st.markerShape,st.markerSizePt]);
  return <g data-series={s.id} data-target={`series:${s.id}`} opacity={st.opacity} style={screen?{willChange:'transform'}:undefined}>
+  {dataset&&<ErrorBarGeometry dataset={dataset} series={s} coordinates={c} view={view} screen={screen} margin={margin} budget={budget} color={outputColor((s.errorBars?.color??s.style.stroke),mode)}/>}
   {!pointMode&&<>{paths.map((part,i)=><path key={i} d={part.d} stroke={st.stroke} strokeWidth={st.strokeWidthPt*4/3} strokeDasharray={dashArray[st.dash]} strokeDashoffset={part.offset} fill="none"/>)}{screen&&<path d={path} stroke="transparent" strokeWidth={14} fill="none"/>}</>}
-  {batch?batches.map((part,i)=><path key={i} data-marker-ids={part.ids} d={part.d} fill={st.markerFill} stroke={st.markerStroke} strokeWidth={.9}/>):markers&&markerPoints.map((pt,j)=><path key={pt.id} data-point={pt.id} d={markerPath(st.markerShape,st.markerSizePt*0.85)} transform={`translate(${screen?markerPixels[j].x:c.x(pt.x)},${screen?markerPixels[j].y:c.y(pt.y)})`} fill={st.markerFill} stroke={st.markerStroke} strokeWidth={0.9} visibility={mode==='strict-bw'&&markerPoints.length>80&&j%Math.ceil(markerPoints.length/80)!==0?'hidden':undefined}/>)}
+  {batch?batches.map((part,i)=><path key={i} data-marker-ids={screen?part.ids:undefined} data-marker-count={!screen?Math.min(512,drawnMarkers.length-i*512):undefined} d={part.d} fill={st.markerFill} stroke={st.markerStroke} strokeWidth={.9}/>):showMarkers&&drawnMarkers.map((pt,j)=><path key={pt.id} data-point={markers?pt.id:undefined} data-bw-glyph={!markers?true:undefined} d={markerPath(st.markerShape,st.markerSizePt*0.85)} transform={`translate(${drawnPixels[j].x},${drawnPixels[j].y})`} fill={st.markerFill} stroke={st.markerStroke} strokeWidth={0.9}/>)}
  </g>;
 });
 const SeriesGeometry=memo(function SeriesGeometry({p,c,mode,screen,margin}:SeriesProps&{margin:number}){
  const index=dependencyIndex(p),visible=p.series.filter(s=>s.visible&&(!index.producers.has(s.datasetId)||index.producers.get(s.datasetId)?.status==='valid')).sort((a,b)=>a.order-b.order);
  // Share pixel detail across overlaid traces; local zoom still restores raw points.
  const budget=Math.max(1000,(c.right-c.left)*4/Math.max(1,visible.length));
- return <>{visible.map(s=><SeriesTrace key={s.id} s={s} all={index.datasets.get(s.datasetId)?.points??[]} c={c} view={p.viewport} mode={mode} screen={screen} margin={margin} budget={budget} markers={effectiveMarkers(p,s)} index={mode==='strict-bw'?p.series.indexOf(s):0} dense={visible.length>8} interpolation={(p.extensions.seriesInterpolation as Record<string,string>|undefined)?.[s.id]} breakIds={(p.extensions.lineBreaks as Record<string,string[]>|undefined)?.[s.datasetId]}/>)}<SignalOverlays p={p} c={c} screen={screen} margin={margin} color={value=>outputColor(value,mode)} mode={mode}/></>;
+ return <>{visible.map(s=><SeriesTrace key={s.id} s={s} dataset={index.datasets.get(s.datasetId)} all={index.datasets.get(s.datasetId)?.points??[]} c={c} view={p.viewport} mode={mode} screen={screen} margin={margin} budget={budget} markers={effectiveMarkers(p,s)} index={mode==='strict-bw'?p.series.indexOf(s):0} dense={visible.length>8} interpolation={(p.extensions.seriesInterpolation as Record<string,string>|undefined)?.[s.id]} breakIds={(p.extensions.lineBreaks as Record<string,string[]>|undefined)?.[s.datasetId]}/>)}<SignalOverlays p={p} c={c} screen={screen} margin={margin} color={value=>outputColor(value,mode)} mode={mode}/></>;
 },(a,b)=>a.p.datasets===b.p.datasets&&a.p.series===b.p.series&&a.p.calculations===b.p.calculations&&a.p.extensions.lineBreaks===b.p.extensions.lineBreaks&&a.p.extensions.seriesInterpolation===b.p.extensions.seriesInterpolation&&a.p.editor.showPointMarkers===b.p.editor.showPointMarkers&&a.c===b.c&&a.mode===b.mode&&a.screen===b.screen&&a.margin===b.margin);
 function SeriesLayer({p,c,mode,screen,panning,clipId}:SeriesProps&{panning:boolean;clipId:string}){
  const [prepared,setPrepared]=useState(()=>seriesFrame(p,c,0));
@@ -83,17 +88,19 @@ export function ObjectGeometry({p,o,c,mode='original',hitOnly=false}:{p:ProjectD
  return <><line x1={start.x} y1={start.y} x2={end.x} y2={end.y} {...common}/>{o.type==='arrow'&&<>{['start','both'].includes(st.arrowHead)&&arrow(start.x,start.y,angle+180)}{['end','both'].includes(st.arrowHead)&&arrow(end.x,end.y,angle)}</>}</>;
 }
 export const ChartScene=memo(function ChartScene({p,width,height,colorMode='original',transparent=false,screen=false,includeSeries=true,panning=false,includeAxes=true,includeObjects=true,includeLegend=true,clipId:suppliedClipId}:{p:ProjectDocument}&RenderOptions){
+ if(p.extensions.documentMode==='sheet'){includeAxes=false;includeLegend=false}
  const generatedClipId=useId().replace(/:/g,''),clipId=suppliedClipId??generatedClipId;
  const c=useMemo(()=>createCoordinates(p,width,height),[p.viewport,p.axes,p.page.paddingPx,width,height]),xt=screen?visibleTicks(c.xTicks,Math.floor((c.right-c.left)/Math.max(36,c.xLabelWidth+14))):c.xTicks,yt=screen?visibleTicks(c.yTicks,Math.floor((c.bottom-c.top)/25)):c.yTicks;
+ const scientificColors=p.extensions.scientificColors as {ink?:string;grid?:string}|undefined,ink=typeof scientificColors?.ink==='string'&&/^#[0-9a-f]{6}$/i.test(scientificColors.ink)?scientificColors.ink:'#363C43',gridColor=typeof scientificColors?.grid==='string'&&/^#[0-9a-f]{6}$/i.test(scientificColors.grid)?scientificColors.grid:'#E9EDF0';
  const themed=p.extensions.canvasTheme!=='source'&&screen&&colorMode==='original'&&p.page.background.toUpperCase()==='#FFFFFF';
  const objs=includeObjects?[...p.objects].filter(o=>o.visible).sort((a,b)=>a.zIndex-b.zIndex):[];const axisDisplay=p.extensions.axisDisplay as AxisDisplay|undefined;const legendStyle=p.extensions.legendStyle as {fontSizePt:number;lineHeightPx:number}|undefined;
  const object=(o:DrawObject)=><g key={o.id} data-target={`object:${o.id}`} data-object={o.id}><ObjectGeometry p={p} o={o} c={c} mode={colorMode}/>{screen&&['segment','arrow','line','callout'].includes(o.type)&&<g opacity={0} strokeWidth={14}><ObjectGeometry p={p} o={o} hitOnly c={c}/></g>}</g>;
  return <>
   <defs><clipPath data-plot-clip="true" id={clipId}><rect x={c.left} y={c.top} width={c.right-c.left} height={c.bottom-c.top}/></clipPath><pattern id="hatch" width="9" height="9" patternUnits="userSpaceOnUse"><path d="M-2 2L2-2 M0 9L9 0 M7 11L11 7" stroke="#000000" strokeWidth="0.5" fill="none"/></pattern></defs>
   {!transparent&&<rect data-canvas-paper={themed||undefined} width={width} height={height} fill={colorMode==='strict-bw'?'#FFFFFF':outputColor(p.page.background,colorMode)}/>}
-  <g data-canvas-ink={themed||undefined} fontFamily="Courier New" fontSize="12" fill={colorMode==='strict-bw'?'#000000':'#363C43'} color={colorMode==='strict-bw'?'#000000':'#363C43'}>
+  <g data-canvas-ink={themed||undefined} fontFamily="Courier New" fontSize="12" fill={colorMode==='strict-bw'?'#000000':outputColor(ink,colorMode)} color={colorMode==='strict-bw'?'#000000':outputColor(ink,colorMode)}>
    {objs.filter(o=>o.zIndex<0).map(object)}
-   <g data-canvas-grid={themed||undefined} stroke={colorMode==='strict-bw'?'#000000':'#E9EDF0'} strokeWidth={colorMode==='strict-bw'?0.4:0.7} strokeDasharray={colorMode==='strict-bw'?'1 5':undefined} pointerEvents="none">
+   <g data-canvas-grid={themed||undefined} stroke={colorMode==='strict-bw'?'#000000':outputColor(gridColor,colorMode)} strokeWidth={colorMode==='strict-bw'?0.4:0.7} strokeDasharray={colorMode==='strict-bw'?'1 5':undefined} pointerEvents="none">
     {includeAxes&&p.axes.x.grid&&xt.map(v=><line key={v} x1={c.x(v)} x2={c.x(v)} y1={c.top} y2={c.bottom}/>)}{includeAxes&&p.axes.y.grid&&yt.map(v=><line key={v} y1={c.y(v)} y2={c.y(v)} x1={c.left} x2={c.right}/>)}
    </g>
    {includeSeries&&<SeriesLayer p={p} c={c} mode={colorMode} screen={screen} panning={screen&&panning} clipId={clipId}/>}
@@ -110,7 +117,7 @@ export const ChartScene=memo(function ChartScene({p,width,height,colorMode='orig
     <text data-axis-label="y" transform={`translate(17 ${(c.top+c.bottom)/2}) rotate(-90)`} textAnchor="middle" fontSize={p.axes.y.labelSizePt*4/3}>{p.axes.y.label}</text>
    </g></>}
    {objs.filter(o=>o.zIndex>=0&&o.type==='table').map(object)}
-   {includeLegend&&p.legend.visible&&<g data-target="legend" fontSize={legendStyle?legendStyle.fontSizePt*4/3:undefined} transform={`translate(${anchorPixel(p,p.legend.anchor,c).x},${anchorPixel(p,p.legend.anchor,c).y})`}>{[...p.series].filter(s=>s.visible&&!p.calculations.some(calc=>calc.resultDatasetId===s.datasetId&&calc.status!=='valid')).sort((a,b)=>a.order-b.order).map((s,i)=>{const st=outputStyle(s,p.series.indexOf(s),colorMode);return <g key={s.id} data-target={`series:${s.id}`} transform={`translate(0 ${i*(legendStyle?.lineHeightPx??23)})`}>{s.mode!=='points'&&<line x1={0} x2={26} stroke={st.stroke} strokeWidth={st.strokeWidthPt*4/3} strokeDasharray={dashArray[st.dash]}/>} {effectiveMarkers(p,s)&&<path d={markerPath(st.markerShape,2.5)} transform="translate(13 0)" fill={st.markerFill} stroke={st.markerStroke}/>}<text x={34} y={4}>{s.name}</text></g>})}</g>}
+   {includeLegend&&p.legend.visible&&<g data-target="legend" fontSize={legendStyle?legendStyle.fontSizePt*4/3:undefined} transform={`translate(${anchorPixel(p,p.legend.anchor,c).x},${anchorPixel(p,p.legend.anchor,c).y})`}>{[...p.series].filter(s=>s.visible&&!p.calculations.some(calc=>calc.resultDatasetId===s.datasetId&&calc.status!=='valid')).sort((a,b)=>a.order-b.order).map((s,i)=>{const st=outputStyle(s,p.series.indexOf(s),colorMode);return <g key={s.id} data-target={`series:${s.id}`} transform={`translate(0 ${i*(legendStyle?.lineHeightPx??23)})`}>{s.mode!=='points'&&<line x1={0} x2={26} stroke={st.stroke} strokeWidth={st.strokeWidthPt*4/3} strokeDasharray={dashArray[st.dash]}/>} {(effectiveMarkers(p,s)||colorMode==='strict-bw')&&<path d={markerPath(st.markerShape,2.5)} transform="translate(13 0)" fill={st.markerFill} stroke={st.markerStroke}/>}<text x={34} y={4}>{s.name}</text></g>})}</g>}
   </g>
  </>
 });

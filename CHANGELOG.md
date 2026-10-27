@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 — 2026-10-27
+
+- Bounded Gaussian, Lorentzian and normalized pseudo-Voigt peak fitting, including overlap, fixed parameters, bounds, optional baselines, full-data Worker computation and independent component/residual curves. Numerical comparisons cover SciPy TRF and NIST Gauss1.
+- Symmetric absolute ΔX/ΔY: column import, manual edits, per-series constants, error-bar appearance, complete vector export and APIOPTS2 binary workspace storage. Older APH projects remain readable.
+- Four scientific appearance presets, custom portable `.apiostyle` files, immutable previews, series appearance copy/paste and distinct monochrome export glyph/dash combinations.
+- In-cell rich table editing, shared visible cell/range selection, merges, decimal formatting, full-range clipboard, independent row/column deletion, outer-edge resize, content fitting and alignment guides. Table properties open by double-click and temporarily hide if they cover the edited cell.
+- Blank sheets, document-tab caption rename, object/table copying between tabs, explicit Send a copy actions and axis labels from the previous graph tab. Physical RU/EN text-tool shortcuts and direct axis-symbol insertion.
+- Full point-mode exports batch large marker sets without discarding original observations. Scientific appearance and blank-sheet state survive export without affecting data or navigation.
+
+
 ## 1.2.1 — 2026-10-27
 
 - Fit Origin worksheet and matrix row-number columns to the complete row index, including large tables and larger interface text. Numeric source values and graph geometry are unchanged.

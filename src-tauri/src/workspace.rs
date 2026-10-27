@@ -92,7 +92,7 @@ pub fn validate(bytes: &[u8]) -> Result<(), String> {
     if required.len() > 8
         || required
             .iter()
-            .any(|v| !matches!(v.as_str(), Some("graph-1.1" | "graph-1.2" | "points-1" | "origin-oim-1")))
+            .any(|v| !matches!(v.as_str(), Some("graph-1.1" | "graph-1.2" | "graph-1.3" | "points-1" | "points-2" | "origin-oim-1")))
     {
         return Err("WORKSPACE_NEWER_READER".into());
     }
@@ -170,12 +170,25 @@ pub fn validate(bytes: &[u8]) -> Result<(), String> {
             for dataset in datasets {
                 let b = resource(&dataset["pointsResource"])?;
                 used.insert(dataset["pointsResource"].as_str().unwrap().to_owned());
-                if b.len() < 16 || &b[..8] != b"APIOPTS1" || b[12..16] != [4, 3, 2, 1] {
+                if b.len() < 16 || !matches!(&b[..8], b"APIOPTS1" | b"APIOPTS2") || b[12..16] != [4, 3, 2, 1] {
                     return Err("WORKSPACE_INVALID_POINTS".into());
                 }
                 let count = u32::from_le_bytes(b[8..12].try_into().unwrap()) as usize;
-                if count > 1000000 || b.len() != 16 + count * 52 {
+                let record_size = if &b[..8] == b"APIOPTS2" { 72 } else { 52 };
+                if count > 1000000 || b.len() != 16 + count * record_size {
                     return Err("WORKSPACE_INVALID_POINTS".into());
+                }
+                for i in 0..count {
+                    let at = 16 + i * record_size;
+                    for offset in [36, 44] {
+                        if !f64::from_le_bytes(b[at+offset..at+offset+8].try_into().unwrap()).is_finite() { return Err("WORKSPACE_INVALID_POINTS".into()); }
+                    }
+                    if record_size == 72 {
+                        let flags = u32::from_le_bytes(b[at+52..at+56].try_into().unwrap());
+                        let x = f64::from_le_bytes(b[at+56..at+64].try_into().unwrap());
+                        let y = f64::from_le_bytes(b[at+64..at+72].try_into().unwrap());
+                        if flags > 3 || !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 || (flags & 1 == 0 && x != 0.0) || (flags & 2 == 0 && y != 0.0) { return Err("WORKSPACE_INVALID_POINTS".into()); }
+                    }
                 }
             }
         } else {

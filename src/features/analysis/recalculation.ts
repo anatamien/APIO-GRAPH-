@@ -1,3 +1,4 @@
+import type {PeakFitData} from '../../domain/math/peakFit';
 import type {Calculation,Point,ProjectDocument} from '../../domain/model';
 import {id} from '../../domain/model';
 import {MathError,type CalculationResult,type XY} from '../../domain/math';
@@ -8,6 +9,7 @@ import {packCoordinates,unpackCoordinates} from './pointBuffer';
 import {packPeaks} from './signalBuffer';
 
 export interface RecomputeJob {
+ peakFits?:Record<string,PeakFitData>;
  calculations:Calculation[];
  units:Record<string,{x:string;y:string}>;
  sources:{id:string;coordinates:Float64Array}[];
@@ -28,12 +30,12 @@ export function recomputeIds(p:ProjectDocument,targets?:readonly string[]):Set<s
  return chosen;
 }
 export function createRecomputeJob(p:ProjectDocument,targets?:readonly string[]):RecomputeJob{
- const index=dependencyIndex(p),chosen=recomputeIds(p,targets),calculations=index.order.filter(c=>chosen.has(c.id));
+ const index=dependencyIndex(p),chosen=recomputeIds(p,targets),calculations=index.order.filter(c=>chosen.has(c.id)),neededFits=new Set(calculations.filter(c=>c.kind==='peak-fit-output').map(c=>String(c.parameters.masterCalculationId)));
  const external=new Set<string>();
- for(const c of calculations)for(const source of c.sourceDatasetIds)if(!chosen.has(index.producers.get(source)?.id??''))external.add(source);
+ for(const c of calculations)for(const [at,source]of c.sourceDatasetIds.entries())if(!(c.kind==='peak-fit-output'&&at===0)&&!chosen.has(index.producers.get(source)?.id??''))external.add(source);
  const anchors=[...p.objects.flatMap(o=>o.anchors),p.legend.anchor];
  const unitSources=new Set(calculations.filter(c=>c.kind==='area'&&c.parameters.baselineDatasetId).flatMap(c=>c.sourceDatasetIds));
- return {calculations:calculations.map(c=>{const copy={...c};delete copy.data;return copy}),...(unitSources.size?{sourceUnits:Object.fromEntries([...unitSources].map(did=>[did,datasetUnits(p,did)]))}:{}),units:Object.fromEntries(calculations.map(c=>[c.id,datasetUnits(p,c.sourceDatasetIds[0])])),sources:[...external].map(did=>({id:did,coordinates:packCoordinates(index.datasets.get(did)!.points)})),previous:calculations.flatMap(c=>{
+ return {...(neededFits.size?{peakFits:Object.fromEntries(p.calculations.filter(c=>neededFits.has(c.id)&&c.data?.peakFit).map(c=>[c.id,c.data!.peakFit!]))}:{}),calculations:calculations.map(c=>{const copy={...c};delete copy.data;return copy}),...(unitSources.size?{sourceUnits:Object.fromEntries([...unitSources].map(did=>[did,datasetUnits(p,did)]))}:{}),units:Object.fromEntries(calculations.map(c=>[c.id,datasetUnits(p,c.sourceDatasetIds[0])])),sources:[...external].map(did=>({id:did,coordinates:packCoordinates(index.datasets.get(did)!.points)})),previous:calculations.flatMap(c=>{
   if(!c.resultDatasetId)return [];const d=index.datasets.get(c.resultDatasetId)!;
   const attached=anchors.filter(a=>a.mode==='point'&&a.datasetId===d.id);
   const ids=attached.length?pointIndex(d.points):undefined;
@@ -48,6 +50,7 @@ function matchingIndices(x:Float64Array,points:readonly XY[],kind:Calculation['k
 }
 /** Runs entirely inside the existing analysis Worker. No styles or document copies. */
 export function executeRecomputeJob(job:RecomputeJob):NumericPatch[]{
+ const peakFits=new Map(Object.entries(job.peakFits??{}));
  const datasets=new Map(job.sources.map(d=>[d.id,unpackCoordinates(d.coordinates)]));
  const previous=new Map(job.previous.map(d=>[d.id,d])),failed=new Set<string>(),patches:NumericPatch[]=[],date=new Date().toISOString();
  const cache=new WeakMap<XY[],Map<string,CalculationResult>>();
@@ -56,17 +59,18 @@ export function executeRecomputeJob(job:RecomputeJob):NumericPatch[]{
  const baselineOutputs=new Map<string,Set<unknown>>();for(const c of job.calculations)if(c.kind==='baseline'){const key=JSON.stringify(c.sourceDatasetIds)+numericKey(c,true);const outputs=baselineOutputs.get(key)??new Set();outputs.add(c.parameters.output??'corrected');baselineOutputs.set(key,outputs)}
  for(const c of job.calculations){
   try{
-   const inputs=c.sourceDatasetIds.map(did=>{if(failed.has(did))throw new MathError('MATH_DEPENDENCY_INVALID');const values=datasets.get(did);if(!values)throw new MathError('MATH_SOURCE_MISSING');return values});
-   const input=c.kind==='area'||inputs.length===1?inputs[0]:inputs.flat();
+   const inputs=c.sourceDatasetIds.map((did,at)=>{if(failed.has(did))throw new MathError('MATH_DEPENDENCY_INVALID');if(c.kind==='peak-fit-output'&&at===0)return[];const values=datasets.get(did);if(!values)throw new MathError('MATH_SOURCE_MISSING');return values});
+   const input=c.kind==='peak-fit-output'?inputs[1]:c.kind==='area'||inputs.length===1?inputs[0]:inputs.flat();
    const reference=c.kind==='area'&&typeof c.parameters.baselineDatasetId==='string'?datasets.get(c.parameters.baselineDatasetId):undefined;
    if(c.kind==='area'&&c.parameters.baselineDatasetId&&!reference)throw new MathError('MATH_SOURCE_MISSING');
    if(reference&&job.sourceUnits){const a=job.sourceUnits[c.sourceDatasetIds[0]],b=job.sourceUnits[String(c.parameters.baselineDatasetId)];if(a&&b&&(a.x!==b.x||a.y!==b.y))throw new MathError('SIGNAL_BASELINE_UNITS')}
    const paired=c.kind==='baseline'&&(baselineOutputs.get(JSON.stringify(c.sourceDatasetIds)+numericKey(c,true))?.size??0)>1;
    const key=numericKey(c,paired);
    let methods=cache.get(input);if(!methods){methods=new Map();cache.set(input,methods)}
-   let result=methods.get(key);if(!result){result=calculatePreview(c.kind,input,paired?{...c.parameters,output:'both'}:c.parameters,reference);methods.set(key,result)}
+   let result=methods.get(key);if(!result){result=calculatePreview(c.kind,input,c.kind==='peak-fit-output'?{...c.parameters,fit:peakFits.get(String(c.parameters.masterCalculationId))}:paired?{...c.parameters,output:'both'}:c.parameters,reference);methods.set(key,result)}
    if(paired)result={points:c.parameters.output==='baseline'?result.points:result.companion!,summary:{...result.summary,output:String(c.parameters.output??'corrected')}};
    const patch:NumericPatch={calculation:{...c,status:'valid',summary:{...result.summary},parameters:{...c.parameters,sourceUnits:job.units[c.id],calculatedAt:date},algorithmVersion:1}};
+   if(result.data?.peakFit){peakFits.set(c.id,result.data.peakFit);patch.calculation.data={peakFit:result.data.peakFit}}
    if(result.data?.peaks)patch.peakValues=packPeaks(result.data.peaks);
    if(c.resultDatasetId){
     const old=previous.get(c.resultDatasetId);if(!old)throw new MathError('MATH_RESULT_MISSING');

@@ -1,4 +1,4 @@
-import {createProject,id,makeObject,makeSeries,type ProjectDocument,type Point,type Series,type TextPart} from '../../domain/model';
+import {createProject,id,makeObject,makeSeries,schemaAtLeast,type ProjectDocument,type Point,type Series,type TextPart} from '../../domain/model';
 import type {PlotArea} from '../../domain/plotAreas';
 import {layoutText} from '../../domain/textGeometry';
 import {autoRange} from '../../domain/geometry';
@@ -25,25 +25,26 @@ export function convertOrigin(model:OriginModel,resources:ReadonlyMap<string,Uin
  for(const link of links){
   const y=index.columns.get(link.y),x=link.x?index.columns.get(link.x):undefined;if(!y||(!x&&!link.rowIndex))throw new Error('ORIGIN_X_REQUIRED');
   if(y.rowCount>1000000||(x?.rowCount??0)>1000000)throw new Error('ORIGIN_POINT_LIMIT');
-  const key=`${link.x??'row'}|${link.y}`,yn=index.nodes.get(y.nodeId)!,xn=x?index.nodes.get(x.nodeId):undefined,curve=link.curveId?index.nodes.get(link.curveId):undefined;
+  const key=`${link.x??'row'}|${link.y}|${link.errorX??''}|${link.errorY??''}`,yn=index.nodes.get(y.nodeId)!,xn=x?index.nodes.get(x.nodeId):undefined,curve=link.curveId?index.nodes.get(link.curveId):undefined;
   let pair=cache.get(key);
   if(!pair){
    const bytes=(id:string)=>{const b=resources.get(id);if(!b)throw new Error('ORIGIN_INVALID_RESOURCE');return b},yv=bytes(y.values),yt=bytes(y.tags),xd=x?bytes(x.values):undefined,xt=x?bytes(x.tags):undefined,yd=new DataView(yv.buffer,yv.byteOffset,yv.byteLength),xdata=xd?new DataView(xd.buffer,xd.byteOffset,xd.byteLength):undefined;
    if(p.datasets.reduce((n,d)=>n+d.points.length,0)+y.rowCount>2000000)throw new Error('ORIGIN_WORKING_MEMORY_LIMIT');
    const pointNamespace=id().slice(0,24),points:Point[]=[],gapIds:string[]=[],rowRuns:{pointStart:number;sourceStart:number;length:number}[]=[];let gap=false,lastRow=-2;
+   const errors=([['errorX',link.errorX],['errorY',link.errorY]] as const).flatMap(([key,nodeId])=>{if(!nodeId)return[];const column=index.columns.get(nodeId),node=index.nodes.get(nodeId);if(!column||!node)throw new Error('UNCERTAINTY_ORIGIN_COLUMN');const values=bytes(column.values),tags=bytes(column.tags);return[{key,rows:column.rowCount,start:Number(node.properties.beginRow??0),view:new DataView(values.buffer,values.byteOffset,values.byteLength),tags}]});
    const yStart=Number(yn.properties.beginRow??0),xStart=Number(xn?.properties.beginRow??0),rows=y.rowCount;
    for(let row=0;row<rows;row++){
     const sourceRow=yStart+row,xrow=sourceRow-xStart,yvalue=yd.getFloat64(row*8,true),xvalue=xdata&&xrow>=0&&xrow<x!.rowCount?xdata.getFloat64(xrow*8,true):link.rowIndex?sourceRow+1:NaN;
     const usable=(yt[row]&127)===0&&!(yt[row]&128)&&(!xt||(xrow>=0&&xrow<x!.rowCount&&(xt[xrow]&127)===0&&!(xt[xrow]&128)))&&Number.isFinite(yvalue)&&Number.isFinite(xvalue);
     if(!usable){gap=true;continue}
-    const point={id:pointNamespace+points.length.toString(16).padStart(12,'0'),x:xvalue,y:yvalue};if(gap&&points.length)gapIds.push(point.id);gap=false;
+    const point:Point={id:pointNamespace+points.length.toString(16).padStart(12,'0'),x:xvalue,y:yvalue};for(const error of errors){const at=sourceRow-error.start;if(at<0||at>=error.rows||error.tags[at]!==0)throw new Error(`UNCERTAINTY_ORIGIN_ROW:${sourceRow+1}`);const value=error.view.getFloat64(at*8,true);if(!Number.isFinite(value)||value<0)throw new Error(`UNCERTAINTY_ORIGIN_ROW:${sourceRow+1}`);point[error.key]=value}if(gap&&points.length)gapIds.push(point.id);gap=false;
     if(sourceRow===lastRow+1)rowRuns[rowRuns.length-1].length++;else rowRuns.push({pointStart:points.length,sourceStart:sourceRow,length:1});lastRow=sourceRow;points.push(point);
    }
    if(!points.length){issues.push({nodeId:link.y,code:'ORIGIN_NO_FINITE_XY'});continue}
    const datasetId=id(),name=originPlainText(originText(yn.properties.longNameHex,request.encoding))||originName(yn,request.encoding);
-   p.datasets.push({id:datasetId,name,role:'raw',source:{kind:'import',displayName:model.source.name},points});breaks[datasetId]=graphs?.connectMissingData===true?[]:gapIds;
+   p.datasets.push({id:datasetId,name,role:'raw',source:{kind:'import',displayName:model.source.name},points,...(errors.length?{uncertainty:{x:{mode:link.errorX?'per-point':'none'},y:{mode:link.errorY?'per-point':'none'}}}:{} )});if(errors.length)p.schemaVersion=schemaAtLeast(p.schemaVersion,'1.3.0');breaks[datasetId]=graphs?.connectMissingData===true?[]:gapIds;
    if(typeof yn.properties.commandHex==='string'&&yn.properties.commandHex)snapshots[datasetId]={source:'Origin',formulaHex:yn.properties.commandHex};
-   provenance[datasetId]={xColumn:link.x,yColumn:link.y,rowIndex:!!link.rowIndex,rows:rowRuns,passiveFormulaHex:yn.properties.commandHex??'',xUnitHex:xn?.properties.unitHex??'',yUnitHex:yn.properties.unitHex??'',sampled:false};
+   provenance[datasetId]={xColumn:link.x,yColumn:link.y,...(link.errorX?{errorXColumn:link.errorX}:{}),...(link.errorY?{errorYColumn:link.errorY}:{}),rowIndex:!!link.rowIndex,rows:rowRuns,passiveFormulaHex:yn.properties.commandHex??'',xUnitHex:xn?.properties.unitHex??'',yUnitHex:yn.properties.unitHex??'',sampled:false};
    units[datasetId]={x:link.rowIndex?'row':originText(xn?.properties.unitHex,request.encoding),y:originText(yn.properties.unitHex,request.encoding)};pair={datasetId,breaks:gapIds};cache.set(key,pair);
   }
   const dataset=p.datasets.find(d=>d.id===pair.datasetId)!,s=makeSeries(dataset.id,dataset.name,p.series.length),cp=curve?.properties;

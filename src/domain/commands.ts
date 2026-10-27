@@ -1,5 +1,5 @@
 import {activateArea,plotAreas,syncArea} from './plotAreas';
-import type { ProjectDocument, ID, XY, Anchor } from './model';
+import {schemaAtLeast,type ProjectDocument,type ID,type XY,type Anchor} from './model';
 import { detachAnchor,type Coordinates } from './geometry';
 import {navigateProject} from './project';
 import {visualState,visibilityDescription} from './visualHistory';
@@ -43,6 +43,14 @@ export function editPoint(p:ProjectDocument,datasetId:ID,pointId:ID,xy:XY):Proje
   if(!Number.isFinite(xy.x)||!Number.isFinite(xy.y))throw new Error('INVALID_NUMBER');
   const refresh=(a:Anchor):Anchor=>a.mode==='point'&&a.datasetId===datasetId&&a.pointId===pointId?{...a,fallbackX:xy.x,fallbackY:xy.y}:a;
   return invalidate({...p,datasets:p.datasets.map(d=>d.id===datasetId?{...d,points:d.points.map(pt=>pt.id===pointId?{...pt,...xy}:pt)}:d),objects:p.objects.map(o=>({...o,anchors:o.anchors.map(refresh)})),legend:{...p.legend,anchor:refresh(p.legend.anchor)}},datasetId);
+}
+/** Error values belong to the same stable point ID; clearing a field keeps it missing. */
+export function editPointUncertainty(p:ProjectDocument,datasetId:ID,pointId:ID,axis:'x'|'y',value:number|undefined):ProjectDocument{
+ const d=p.datasets.find(d=>d.id===datasetId);if(!d)return p;if(d.role==='derived')throw new Error('DERIVED_READ_ONLY');
+ if(value!==undefined&&(!Number.isFinite(value)||value<0))throw new Error('UNCERTAINTY_INVALID');
+ const field=axis==='x'?'errorX':'errorY',point=d.points.find(point=>point.id===pointId);if(!point||Object.is(point[field],value))return p;
+ const next={...point};if(value===undefined)delete next[field];else next[field]=value;
+ return invalidate({...p,schemaVersion:schemaAtLeast(p.schemaVersion,'1.3.0'),datasets:p.datasets.map(item=>item===d?{...d,uncertainty:{x:d.uncertainty?.x??{mode:'none'},y:d.uncertainty?.y??{mode:'none'},[axis]:{mode:'per-point'}},points:d.points.map(pt=>pt===point?next:pt)}:item)},datasetId);
 }
 export function deletePoint(p:ProjectDocument,datasetId:ID,pointId:ID,detach:boolean,coordinates?:Coordinates):ProjectDocument {
   if(p.datasets.find(d=>d.id===datasetId)?.role==='derived')throw new Error('DERIVED_READ_ONLY');

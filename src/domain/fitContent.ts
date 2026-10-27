@@ -1,3 +1,4 @@
+import {uncertaintyBounds} from './uncertainty';
 import type {ProjectDocument,Viewport,XY} from './model';
 import {anchorPixel,createCoordinates,resolveAnchor,textRotation} from './geometry';
 import {objectBounds,type ScreenBounds} from './objectBounds';
@@ -18,7 +19,7 @@ export function fitContent(p:ProjectDocument,width:number,height:number,availabl
  let markerRadius=2;
  for(const s of p.series)if(s.visible&&!p.calculations.some(c=>c.resultDatasetId===s.datasetId&&c.status!=='valid')){
   markerRadius=Math.max(markerRadius,s.mode==='line'?s.style.strokeWidthPt:s.style.markerSizePt);
-  for(const pt of p.datasets.find(d=>d.id===s.datasetId)?.points??[])add(pt);
+  const d=p.datasets.find(d=>d.id===s.datasetId);if(d){const bounds=uncertaintyBounds(d,s);add({x:bounds.minX,y:bounds.minY});add({x:bounds.maxX,y:bounds.maxY})}
  }
  const objects=p.objects.filter(o=>o.visible&&o.type!=='line'&&o.type!=='table'&&o.anchors.some(a=>a.mode!=='page'));
  const glyphSizes=new Map(objects.filter(o=>['text','callout'].includes(o.type)&&o.anchors[o.type==='callout'?1:0]?.mode!=='page').map(o=>{const b=layoutText(o).bounds,r=textRotation(p,o.id)*Math.PI/180;return [o.id,{width:Math.abs(b.width*Math.cos(r))+Math.abs(b.height*Math.sin(r)),height:Math.abs(b.width*Math.sin(r))+Math.abs(b.height*Math.cos(r))}]}));

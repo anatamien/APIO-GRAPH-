@@ -11,7 +11,7 @@ import type {ColorMode} from '../chart/ChartScene';
 import {courierAvailable,textOverflow} from './preflight';
 import {createExportSize,displayExportSize,editExportSide,setExportUnits,setExportDpi,lockExportAspect} from '../../domain/exportDimensions';
 export function ExportPanel({project:p,t,onClose,onMessage}:{project:ProjectDocument;t:T;onClose:()=>void;onMessage:(s:string)=>void}){
- const initial=useMemo(exportPreferences,[]);
+ const initial=useMemo(()=>{const stored=p.extensions.exportProfile as {format?:string;mode?:ColorMode;dpi?:number;quality?:number;transparent?:boolean}|undefined;if(stored&&['png','jpeg','svg'].includes(stored.format??'')&&['original','grayscale','strict-bw'].includes(stored.mode??'')&&typeof stored.dpi==='number'&&stored.dpi>=36&&stored.dpi<=2400)return{format:stored.format!,mode:stored.mode!,size:{...createExportSize(p.page.widthPx,p.page.heightPx),dpi:stored.dpi},quality:stored.quality??92,transparent:stored.transparent??false};return exportPreferences()},[]);
  const [format,setFormat]=useState<string>(initial?.format??'png'),[mode,setMode]=useState<ColorMode>(initial?.mode??'original'),[size,setSize]=useState(()=>initial?.size??createExportSize(p.page.widthPx,p.page.heightPx)),[transparent,setTransparent]=useState(initial?.transparent??false),[background,setBackground]=useState(p.page.background),[quality,setQuality]=useState(initial?.quality??92),[error,setError]=useState(''),[busy,setBusy]=useState(false),[url,setUrl]=useState(''),[fontAllowed,setFontAllowed]=useState(false);
  const fontFound=courierAvailable(),{units,dpi,locked:aspectLocked}=size,{width,height}=displayExportSize(size),w=Math.round(size.width),h=Math.round(size.height);
  const preview=useMemo(()=>previewProject(p),[p]);

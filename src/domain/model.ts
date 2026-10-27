@@ -4,21 +4,25 @@ import type {ScientificData,CalculationDisplay} from './signalTypes';
 const {version}=metadata;
 export type ID = string;
 export interface XY { x: number; y: number }
-export interface Point extends XY { id: ID }
+export interface Point extends XY { id: ID;errorX?:number;errorY?:number }
+export interface UncertaintyAxis {mode:'none'|'per-point'|'constant';value?:number}
+export interface ErrorBarStyle {x:boolean;y:boolean;capSizePt:number;widthPt:number;color:string}
 export type Anchor = { mode: 'data'; x: number; y: number } | { mode: 'page'; pageX: number; pageY: number } | { mode: 'point'; datasetId: ID; pointId: ID; fallbackX: number; fallbackY: number; offsetXpx: number; offsetYpx: number };
 export type Dash = 'solid' | 'dash' | 'dot' | 'dash-dot';
 export type Marker = 'circle' | 'square' | 'triangle' | 'diamond' | 'cross' | 'plus';
 export interface Axis { label: string; unit: string; scale: 'linear'; mode: 'auto' | 'manual'; min: number; max: number; tickMode: 'auto' | 'manual'; tickStep: number; tickOrigin: number; minorDivisions: number; grid: boolean; numberFormat: 'auto' | 'fixed' | 'scientific'; precision: number; strokeWidthPt: number; labelSizePt: number }
-export interface Dataset { id: ID; name: string; role: 'raw' | 'derived'; source: { kind: 'import' | 'clipboard' | 'manual' | 'calculation'; displayName?: string; calculationId?: ID }; points: Point[] }
+export interface Dataset {uncertainty?:{x:UncertaintyAxis;y:UncertaintyAxis}; id: ID; name: string; role: 'raw' | 'derived'; source: { kind: 'import' | 'clipboard' | 'manual' | 'calculation'; displayName?: string; calculationId?: ID }; points: Point[] }
 export interface SeriesStyle { stroke: string; strokeWidthPt: number; opacity: number; dash: Dash; markerShape: Marker; markerSizePt: number; markerFill: string; markerStroke: string; markerVisible: boolean }
-export interface Series { id: ID; datasetId: ID; name: string; visible: boolean; includeInAutoRange: boolean; order: number; mode: 'line' | 'points' | 'line-points'; style: SeriesStyle }
+export interface Series {uncertainty?:{x:UncertaintyAxis;y:UncertaintyAxis};errorBars?:ErrorBarStyle; id: ID; datasetId: ID; name: string; visible: boolean; includeInAutoRange: boolean; order: number; mode: 'line' | 'points' | 'line-points'; style: SeriesStyle }
 export type ObjectType = 'text' | 'segment' | 'line' | 'arrow' | 'callout' | 'rectangle' | 'range-x' | 'range-y' | 'marker' | 'table';
 export interface TextPart { text: string; baseline: 'normal' | 'sub' | 'super'; bold: boolean; italic: boolean }
 export interface ObjectStyle { stroke: string; strokeWidthPt: number; dash: Dash; strokeOpacity: number; fill: string; fillOpacity: number; fontSizePt: number; fontFamily: 'Courier New'; arrowHead: 'none' | 'start' | 'end' | 'both'; markerShape: Marker; markerSizePt: number }
 export interface DrawObject { table?:DiagramTable; id: ID; type: ObjectType; name: string; anchors: Anchor[]; geometry: { directionX?: number; directionY?: number; widthPx?:number;heightPx?:number }; text: TextPart[]; style: ObjectStyle; zIndex: number; visible: boolean; locked: boolean }
-export type CalculationKind = 'linear-fit' | 'polynomial-fit' | 'exponential-fit' | 'power-fit' | 'savitzky-golay' | 'moving-average' | 'derivative' | 'integral' | 'interpolation' | 'statistics' | 'baseline' | 'peaks' | 'area';
+export type CalculationKind = 'linear-fit' | 'polynomial-fit' | 'exponential-fit' | 'power-fit' | 'savitzky-golay' | 'moving-average' | 'derivative' | 'integral' | 'interpolation' | 'statistics' | 'baseline' | 'peaks' | 'area' | 'peak-fit' | 'peak-fit-output';
 export interface Calculation { id: ID; kind: CalculationKind; sourceDatasetIds: ID[]; resultDatasetId: ID | null; parameters: Record<string, unknown>; algorithmVersion: number; status: 'valid' | 'outdated' | 'invalid'; summary: Record<string, string | number | boolean | null>; data?:ScientificData; display?:CalculationDisplay }
 export const PROJECT_SCHEMA_VERSION='1.1.0';
+/** Feature writers may upgrade a schema, never downgrade an existing document. */
+export function schemaAtLeast(current:string,minimum:string):string{const a=current.split('.').map(Number),b=minimum.split('.').map(Number);for(let i=0;i<3;i++){if(a[i]>b[i])return current;if(a[i]<b[i])return minimum}return current}
 export interface Viewport { xMin: number; xMax: number; yMin: number; yMax: number }
 export interface ProjectDocument { format: 'APIO_GRAPH_PROJECT'; schemaVersion: string; createdWith: { name: 'APIO GRAPH'; version: string }; project: { id: ID; title: string; createdAt: string; updatedAt: string }; page: { widthPx: number; heightPx: number; background: string; paddingPx: number }; axes: { x: Axis; y: Axis }; datasets: Dataset[]; series: Series[]; objects: DrawObject[]; calculations: Calculation[]; legend: { visible: boolean; anchor: Anchor }; viewport: Viewport; editor: { selectedObjectId: ID | null; showPointMarkers: boolean }; extensions: Record<string, unknown> }
 export const id = (): ID => crypto.randomUUID();
@@ -31,10 +35,10 @@ export function makeSeries(datasetId: ID, name: string, order: number): Series {
   const color='#000000';
   return {id:id(),datasetId,name,visible:true,includeInAutoRange:true,order,mode:'line',style:{stroke:color,strokeWidthPt:1.3,opacity:1,dash:'solid',markerShape:'circle',markerSizePt:3,markerFill:'#FFFFFF',markerStroke:color,markerVisible:false}};
 }
-export function addPairs(p: ProjectDocument, pairs: readonly XY[], name: string, source: Dataset['source']={kind:'manual'}): ProjectDocument {
-  if(pairs.some(a=>!Number.isFinite(a.x)||!Number.isFinite(a.y))) throw new Error('INVALID_NUMBER');
-  const d:Dataset={id:id(),name,role:'raw',source,points:pairs.map(a=>({...a,id:id()}))};
-  return {...p,datasets:[...p.datasets,d],series:[...p.series,makeSeries(d.id,name,p.series.length)]};
+export function addPairs(p: ProjectDocument, pairs: readonly (XY&Pick<Point,'errorX'|'errorY'>)[], name: string, source: Dataset['source']={kind:'manual'}): ProjectDocument {
+  let errorX=false,errorY=false;for(const point of pairs){if(!Number.isFinite(point.x)||!Number.isFinite(point.y))throw new Error('INVALID_NUMBER');for(const key of ['errorX','errorY'] as const){const value=point[key];if(value!==undefined&&(!Number.isFinite(value)||value<0))throw new Error('UNCERTAINTY_INVALID')}errorX ||= point.errorX!==undefined;errorY ||= point.errorY!==undefined}
+  const d:Dataset={id:id(),name,role:'raw',source,...(errorX||errorY?{uncertainty:{x:{mode:errorX?'per-point':'none'},y:{mode:errorY?'per-point':'none'}}}:{}),points:pairs.map(a=>({...a,id:id()}))};
+  return {...p,schemaVersion:errorX||errorY?schemaAtLeast(p.schemaVersion,'1.3.0'):p.schemaVersion,datasets:[...p.datasets,d],series:[...p.series,makeSeries(d.id,name,p.series.length)]};
 }
 export function makeObject(type: ObjectType, anchors: Anchor[], text=''): DrawObject {
   return {id:id(),type,name:type,anchors,geometry:type==='line'?{directionX:1,directionY:0}:{},text:text?[{text,baseline:'normal',bold:false,italic:false}]:[],style:{stroke:'#2F3339',strokeWidthPt:1,dash:'solid',strokeOpacity:1,fill:'#6686AA',fillOpacity:0.2,fontSizePt:13,fontFamily:'Courier New',arrowHead:type==='arrow'?'end':type==='callout'?'start':'none',markerShape:'circle',markerSizePt:4},zIndex:1,visible:true,locked:false};

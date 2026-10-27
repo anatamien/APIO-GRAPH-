@@ -1,4 +1,5 @@
-import { id, makeSeries, PROJECT_SCHEMA_VERSION, type Anchor, type Calculation, type CalculationKind, type Dataset, type Point, type ProjectDocument } from '../../domain/model';
+import {fitPeaks,peakFitOutput,type PeakFitData} from '../../domain/math/peakFit';
+import { id, makeSeries, PROJECT_SCHEMA_VERSION, schemaAtLeast, type Anchor, type Calculation, type CalculationKind, type Dataset, type Point, type ProjectDocument } from '../../domain/model';
 import { calculate, MathError, type CalculationResult, type XY } from '../../domain/math';
 import {dependencyIndex,datasetUnits} from '../../domain/dependencies';
 import {baseline,findSignalPeaks,integrateSignal} from '../../domain/math/signals';
@@ -10,6 +11,8 @@ export function calculatePreview(kind: CalculationKind, points: readonly XY[], p
     if (!Array.isArray(rows) || rows.length !== 2 || rows.some(n => typeof n !== 'number' || !Number.isInteger(n)) || rows[0] < 1 || rows[1] < rows[0] || rows[1] > points.length) throw new MathError('MATH_ROW_RANGE');
     selected = points.slice(rows[0] - 1, rows[1]);
   }
+  if(kind==='peak-fit')return fitPeaks(selected,parameters);
+  if(kind==='peak-fit-output'){const fit=parameters.fit as PeakFitData;if(!fit||fit.version!==1)throw new MathError('PEAK_FIT_RESULT_MISSING');if(parameters.output==='all')return{points:peakFitOutput(selected,fit,'sum'),summary:{n:fit.n,sse:fit.sse,rmse:fit.rmse,rSquared:fit.rSquared,iterations:fit.iterations,conditionEstimate:fit.condition,method:fit.method,parameterUncertainty:'not-estimated-no-noise-model'},data:{peakFit:fit},outputs:[...fit.components.map((_,componentIndex)=>({output:'component' as const,componentIndex,points:peakFitOutput(selected,fit,'component',componentIndex)})),{output:'residual',points:peakFitOutput(selected,fit,'residual')},...(fit.baseline.mode!=='none'?[{output:'baseline' as const,points:peakFitOutput(selected,fit,'baseline')}]:[])]};if(!['component','residual','baseline'].includes(String(parameters.output)))throw new MathError('PEAK_FIT_COMPONENT');return{points:peakFitOutput(selected,fit,parameters.output as 'component'|'residual'|'baseline',Number(parameters.componentIndex??0)),summary:{n:fit.n}}}
   if(kind==='baseline')return baseline(selected,parameters);
   if(kind==='peaks')return findSignalPeaks(selected,parameters);
   if(kind==='area')return integrateSignal(selected,parameters,reference);
@@ -32,7 +35,7 @@ export function addCalculation(project: ProjectDocument, sourceSeriesId: string,
     summary: { ...result.summary }, status: 'valid', algorithmVersion: 1,
     ...(result.data?{data:result.data}:{}),...(['area','peaks'].includes(kind)?{display:{visible:true,stroke:'#000000',opacity:.18,label:kind==='area'}}:{}),
   };
-  if (scalar) return { ...project,schemaVersion:PROJECT_SCHEMA_VERSION, calculations: [...project.calculations, calculation] };
+  if (scalar) return { ...project,schemaVersion:schemaAtLeast(project.schemaVersion,PROJECT_SCHEMA_VERSION), calculations: [...project.calculations, calculation] };
   const derived: Dataset = {
     id: resultDatasetId!, name, role: 'derived', source: { kind: 'calculation', calculationId },
     points: result.points.every(p=>'id'in p&&typeof p.id==='string')?result.points as Point[]:result.points.map(p => ({ x: p.x, y: p.y, id: id() })),
@@ -41,7 +44,7 @@ export function addCalculation(project: ProjectDocument, sourceSeriesId: string,
   series.mode = 'line';
   series.style.markerVisible = false;
   if(kind==='baseline'&&parameters.output==='baseline')series.style.dash='dash';
-  return { ...project,schemaVersion:PROJECT_SCHEMA_VERSION, calculations: [...project.calculations, calculation], datasets: [...project.datasets, derived], series: [...project.series, series] };
+  return { ...project,schemaVersion:schemaAtLeast(project.schemaVersion,kind==='peak-fit'?'1.3.0':PROJECT_SCHEMA_VERSION), calculations: [...project.calculations, calculation], datasets: [...project.datasets, derived], series: [...project.series, series] };
 }
 
 function preservePointIds(previous: readonly Point[], points: readonly XY[], kind: CalculationKind): Point[] {
@@ -81,7 +84,7 @@ export function recomputeProject(project: ProjectDocument): ProjectDocument {
       const reference=original.kind==='area'&&typeof original.parameters.baselineDatasetId==='string'?datasets.get(original.parameters.baselineDatasetId):undefined;
       if(original.kind==='area'&&original.parameters.baselineDatasetId&&!reference)throw new MathError('MATH_SOURCE_MISSING');
       if(reference){const a=datasetUnits(project,sources[0].id),b=datasetUnits(project,reference.id);if(a.x!==b.x||a.y!==b.y)throw new MathError('SIGNAL_BASELINE_UNITS')}
-      const result = calculatePreview(original.kind, original.kind==='area'?sources[0].points:sources.flatMap(d => d.points), original.parameters,reference?.points);
+      const master=original.kind==='peak-fit-output'?calculations.get(String(original.parameters.masterCalculationId)):undefined;const result = calculatePreview(original.kind,original.kind==='peak-fit-output'?sources[1].points:original.kind==='area'?sources[0].points:sources.flatMap(d=>d.points),master?{...original.parameters,fit:master.data?.peakFit}:original.parameters,reference?.points);
       if (original.resultDatasetId) {
         const previous = datasets.get(original.resultDatasetId);
         if (!previous) throw new MathError('MATH_RESULT_MISSING');

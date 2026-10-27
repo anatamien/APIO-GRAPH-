@@ -1,3 +1,5 @@
+import {ScientificStyleEditor} from './ScientificStyleEditor';
+import {UncertaintyEditor} from './UncertaintyEditor';
 import {Fragment,useEffect} from 'react';
 import {Shapes} from 'lucide-react';
 import {Panel,Field,NumberField,Check,Select,SegmentControl,type T} from '../../app/controls';
@@ -18,6 +20,7 @@ export function SeriesPanel({project:p,t,onSelect,onClose,onChange,selectedId,on
   {onDataResults&&<button className="object-list-button" onClick={onDataResults}>{t('data.results')}</button>}
   {onObjects&&<button className="object-list-button" aria-label={t('graphObjects')} onClick={onObjects}><Shapes size={17}/>{t('graphObjects')} ({p.objects.length})</button>}
   {p.series.length>0&&<Select label={t('currentSeries')} value={s?.id??''} items={[...(!s?[["",t('chooseSeries')] as [string,string]]:[]),...p.series.map(s=>[s.id,s.name+(s.visible?'':` · ${t('hiddenSeries')}`)] as [string,string])]} onChange={onSelect}/>}
+  <ScientificStyleEditor project={p} series={s} onChange={onChange} t={t}/>
   {s?<>
    <small className="muted series-identity" title={s.id}>ID · {s.id}</small>
    {calculation&&calculation.status!=='valid'&&<p role="status" className="notice">{t('seriesUnavailable')} {t(calculation.status==='outdated'?'seriesOutdated':'seriesInvalid')}{typeof calculation.summary.errorCode==='string'?` · ${calculation.summary.errorCode}`:''}</p>}
@@ -35,6 +38,7 @@ export function SeriesPanel({project:p,t,onSelect,onClose,onChange,selectedId,on
     <Select label={t('dash')} value={s.style.dash} items={['solid','dash','dot','dash-dot'].map(a=>[a,t(a==='dash'?'dashLine':a)])} onChange={dash=>update({style:{...s.style,dash:dash as Dash}})}/></div>
     <NumberField label={t('opacity')+', %'} value={s.style.opacity*100} min={0} max={100} onChange={opacity=>update({style:{...s.style,opacity:opacity/100}})}/>
    </section>
+   {p.datasets.find(d=>d.id===s.datasetId)&&<UncertaintyEditor project={p} dataset={p.datasets.find(d=>d.id===s.datasetId)!} series={s} onChange={onChange} t={t}/>}
    <details className="control-section marker-settings" open={markers||undefined} key={s.id+':'+markers}><summary>{t('markerGroup')}</summary>
     <Select label={t('markerShape')} value={s.style.markerShape} items={['circle','square','triangle','diamond','cross','plus'].map(a=>[a,t(a)])} onChange={markerShape=>update({style:{...s.style,markerShape:markerShape as Marker}})}/>
     <NumberField label={t('markerSize')} value={s.style.markerSizePt} min={0} max={32} onChange={markerSizePt=>update({style:{...s.style,markerSizePt}})}/>

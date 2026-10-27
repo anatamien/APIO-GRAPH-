@@ -11,5 +11,5 @@ export interface PeakMeasurement {
  level:number|null;
  incomplete:boolean;
 }
-export interface ScientificData {peaks?:PeakMeasurement[]}
+export interface ScientificData {peaks?:PeakMeasurement[];peakFit?:import('./math/peakFit').PeakFitData}
 export interface CalculationDisplay {visible:boolean;stroke:string;opacity:number;label:boolean}

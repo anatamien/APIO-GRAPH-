@@ -25,7 +25,7 @@ export interface OriginModel {
  coverage:{inventory:'partial'|'complete';visualEquivalence:'unverified';opaqueRanges:OriginRange[]};
  sourceResourceId:string|null;
 }
-export interface OriginViewState {encoding:string;selectedId:string|null;includedIds:string[];includeSource:boolean}
+export interface OriginViewState {tabName?:string;encoding:string;selectedId:string|null;includedIds:string[];includeSource:boolean}
 const kinds=new Set<OriginNodeKind>(['folder','workbook','worksheet','column','graph','layer','curve','text','matrix','note','attachment','opaque']);
 const sha=/^[a-f0-9]{64}$/,hex=/^(?:[a-f0-9]{2})*$/;
 const isHash=(v:unknown):v is string=>typeof v==='string'&&sha.test(v);

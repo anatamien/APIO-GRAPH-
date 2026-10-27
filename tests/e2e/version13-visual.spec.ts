@@ -1,0 +1,18 @@
+import {test,expect} from '@playwright/test';
+import {mkdir,writeFile} from 'node:fs/promises';
+import fixture from '../fixtures/peak-fit-reference.json' with {type:'json'};
+import {addPairs,createProject} from '../../src/domain/model';
+import {autoRange} from '../../src/domain/geometry';
+import {makeDiagramTable,pasteTable,tableObject} from '../../src/domain/diagramTable';
+import {calculatePreview} from '../../src/features/analysis/operations';
+import {applyPeakFit} from '../../src/features/analysis/peakFitOperations';
+
+for(const theme of ['light','dark'])test(`1.3 integrated scientific panels and table layout (${theme})`,async({page})=>{
+ await page.addInitScript(theme=>localStorage.setItem('apio.settings',JSON.stringify({language:'en',theme})),theme);
+ const f=fixture.cases[0];let p=addPairs(createProject(),f.points.map(point=>({...point,errorY:.025})),'Measured signal'),result=calculatePreview('peak-fit',p.datasets[0].points,f.options);result=calculatePreview('peak-fit-output',p.datasets[0].points,{fit:result.data!.peakFit,output:'all'});p=applyPeakFit(p,p.series[0].id,f.options,result,'Gaussian fit',{component:'Component',residual:'Residual',baseline:'Baseline'});p.viewport=autoRange(p);p.axes.x.label='Temperature (°C)';p.axes.x.unit='°C';p.axes.y.label='ΔH (mW)';p.axes.y.unit='mW';p.legend.anchor={mode:'page',pageX:.08,pageY:.08};const table=pasteTable(makeDiagramTable(3,2,true),0,0,'Parameter\tResult\nCenter\t0.4\nFWHM\t1.3',false);table.columns[0].size=105;table.columns[1].size=100;p.objects=[tableObject([{mode:'page',pageX:.5,pageY:.68}],table)];
+ const shots=process.env.APIO_V13_SHOTS;const shot=async(name:string)=>{if(shots){await mkdir(shots,{recursive:true});await page.screenshot({path:`${shots}/${name}-${theme}.png`})}};
+ if(shots){await mkdir(shots,{recursive:true});await writeFile(`${shots}/native-science.aph`,JSON.stringify(p))}await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'Scientific results.aph',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(p))});await expect(page.locator('[data-error-bars]')).toHaveCount(1);
+ const header=(name:string)=>page.locator('.app-header').getByRole('button',{name,exact:true});await header('Mathematics').click();const panel=page.locator('.analysis-panel');await panel.getByLabel('Operation',{exact:true}).selectOption('peak-fit');await panel.getByRole('button',{name:'Calculate',exact:true}).click();await expect(panel.locator('.fit-report-scroll')).toBeVisible();expect(await panel.locator('.panel-body').evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);await panel.locator('.fit-report-scroll').scrollIntoViewIfNeeded();await shot('peak-fit');await panel.getByRole('button',{name:'Close',exact:true}).click();
+ await page.locator('[data-table-cell="0"] rect').dblclick({position:{x:45,y:25}});await page.keyboard.press('Escape');const tablePanel=page.locator('.table-inspector');await expect(tablePanel).toBeVisible();await page.locator('[data-table-cell="3"] rect').click({position:{x:45,y:25},modifiers:['Shift']});await expect(page.locator('[data-selected-cell]')).toHaveCount(4);await shot('table-range');await tablePanel.getByRole('button',{name:'Close',exact:true}).click();
+ await header('Graph properties').click();const styles=page.locator('.scientific-style-editor');await styles.locator('summary').first().click();await styles.getByLabel('Preset',{exact:true}).selectOption('builtin:2');await expect(styles.locator('.style-preview')).toHaveAttribute('aria-busy','false');await shot('styles');await page.setViewportSize({width:760,height:560});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(styles).toBeVisible();
+});

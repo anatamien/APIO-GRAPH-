@@ -21,8 +21,8 @@ export function relativeMarkerPath(path:string):string{
  }
  if(relativePaths.size>=256)relativePaths.clear();relativePaths.set(path,result);return result;
 }
-export function markerBatches(pixels:readonly XY[],ids:readonly string[],symbolPath:string):{d:string;ids:string}[]{
+export function markerBatches(pixels:readonly XY[],ids:readonly string[],symbolPath:string,chunkSize=128):{d:string;ids:string}[]{
  const glyph=relativeMarkerPath(symbolPath),result:{d:string;ids:string}[]=[];
- for(let i=0;i<pixels.length;i+=128){const end=Math.min(i+128,pixels.length);let d='';for(let j=i;j<end;j++)d+=`M${Number(pixels[j].x.toFixed(8))},${Number(pixels[j].y.toFixed(8))}${glyph}`;result.push({d,ids:ids.slice(i,end).join(' ')})}
+ for(let i=0;i<pixels.length;i+=chunkSize){const end=Math.min(i+chunkSize,pixels.length);let d='';for(let j=i;j<end;j++)d+=`M${Number(pixels[j].x.toFixed(8))},${Number(pixels[j].y.toFixed(8))}${glyph}`;result.push({d,ids:ids.slice(i,end).join(' ')})}
  return result;
 }

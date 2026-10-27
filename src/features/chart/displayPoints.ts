@@ -1,4 +1,4 @@
-import type {Point,XY} from '../../domain/model';
+import type {XY} from '../../domain/model';
 interface Level {size:number;indices:Int32Array}
 export interface DisplayIndex {direction:-1|0|1;verticalDirection:-1|0|1;strict:boolean;xMin:number;xMax:number;levels:Level[]}
 interface Prepared extends DisplayIndex {selections:Map<string,XY[]>;markerTiles:Map<string,XY[]>}
@@ -36,15 +36,13 @@ function select(points:XY[],start:number,end:number,limit:number,cache:Prepared)
  if(cache.selections.size>=8)cache.selections.delete(cache.selections.keys().next().value!);cache.selections.set(key,result);return result;
 }
 /** Extrema at immutable acquisition-order levels, without replacing source arrays. */
-export function displayPoints(points:Point[],limit:number):Point[];
-export function displayPoints(points:XY[],limit:number):XY[];
+export function displayPoints<T extends XY>(points:T[],limit:number):T[];
 export function displayPoints(points:XY[],limit:number):XY[]{
  limit=Math.max(6,Math.floor(limit));if(points.length<=limit)return points;
  return select(points,0,points.length,limit,prepare(points));
 }
 /** Monotonic X supports exact range lookup, including neighbours across clip edges. */
-export function visiblePoints(points:Point[],min:number,max:number,limit:number,margin?:number):Point[];
-export function visiblePoints(points:XY[],min:number,max:number,limit:number,margin?:number):XY[];
+export function visiblePoints<T extends XY>(points:T[],min:number,max:number,limit:number,margin?:number):T[];
 export function visiblePoints(points:XY[],min:number,max:number,limit:number,margin=0):XY[]{
  if(!points.length)return points;limit=Math.max(6,Math.floor(limit));
  const cache=prepare(points);if(!cache.direction)return select(points,0,points.length,limit,cache);
@@ -67,8 +65,7 @@ export function visiblePoints(points:XY[],min:number,max:number,limit:number,mar
  * cluster enters the edge. Each tile retains acquisition-order extrema; sparse
  * tiles restore every original point independently of neighbouring dense tiles.
  */
-export function visibleMarkerPoints(points:Point[],min:number,max:number,limit:number,margin?:number,vertical?:readonly [number,number]):Point[];
-export function visibleMarkerPoints(points:XY[],min:number,max:number,limit:number,margin?:number,vertical?:readonly [number,number]):XY[];
+export function visibleMarkerPoints<T extends XY>(points:T[],min:number,max:number,limit:number,margin?:number,vertical?:readonly [number,number]):T[];
 export function visibleMarkerPoints(points:XY[],min:number,max:number,limit:number,margin=0,vertical?:readonly [number,number]):XY[]{
  if(!points.length)return points;
  const xMin=min,xMax=max;

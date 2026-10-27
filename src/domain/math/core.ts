@@ -1,5 +1,5 @@
 export interface XY { x: number; y: number }
-export interface CalculationResult { points: XY[]; summary: Record<string, number | string | null>; data?:import('../signalTypes').ScientificData; companion?:XY[];plot?:{baseline?:XY[];corrected?:XY[]} }
+export interface CalculationResult { points: XY[]; summary: Record<string, number | string | null>; data?:import('../signalTypes').ScientificData; companion?:XY[];outputs?:{output:'component'|'residual'|'baseline';componentIndex?:number;points:XY[]}[];plot?:{baseline?:XY[];corrected?:XY[];fit?:XY[];source?:XY[]} }
 export type Parameters = Record<string, unknown>;
 export type Range = readonly [number, number];
 export const OUTPUT_LIMIT = 1_000_000;

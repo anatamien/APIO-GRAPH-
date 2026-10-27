@@ -69,6 +69,7 @@ export class Workspace {
  }
 }
 export function graphName(tab:GraphTab,unnamed:string):string{
+ const alias=tab.origin?.history.current.tabName??(!tab.deferred?tab.history.current.extensions.tabName:undefined);if(typeof alias==='string'&&alias.trim())return alias;
  if(tab.label)return tab.label;
  if(tab.path)return tab.path.split(/[\\/]/).pop()!;
  if(tab.origin)return tab.origin.model.source.name;

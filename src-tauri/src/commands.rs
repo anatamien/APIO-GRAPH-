@@ -956,15 +956,20 @@ pub async fn save_passive_bytes(
         .get("x-apio-extension")
         .and_then(|v| v.to_str().ok())
         .ok_or("EXPORT_UNSUPPORTED_FORMAT")?;
-    if !["bin", "opj", "opju", "org", "png", "jpg", "gif", "bmp", "pdf", "txt"].contains(&extension) {
+    if !["bin", "opj", "opju", "org", "png", "jpg", "gif", "bmp", "pdf", "txt", "apiostyle"].contains(&extension) {
         return Err("EXPORT_UNSUPPORTED_FORMAT".into());
     }
-    let filename = format!("Origin-source.{extension}");
+    if extension == "apiostyle" {
+        if bytes.len() > 256 * 1024 { return Err("STYLE_INVALID".into()); }
+        let style: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| "STYLE_INVALID")?;
+        if style["format"] != "APIO_SCIENTIFIC_STYLE" || style["version"] != 1 { return Err("STYLE_INVALID".into()); }
+    }
+    let filename = if extension == "apiostyle" { "APIO-style.apiostyle".to_string() } else { format!("Origin-source.{extension}") };
     let chosen = app
         .dialog()
         .file()
         .set_parent(&window)
-        .add_filter("Origin passive bytes", &[extension])
+        .add_filter(if extension == "apiostyle" { "APIO scientific style" } else { "Origin passive bytes" }, &[extension])
         .set_file_name(&filename)
         .blocking_save_file();
     let Some(file) = chosen else { return Ok(None) };

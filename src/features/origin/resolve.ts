@@ -14,7 +14,7 @@ export function originIndex(model:OriginModel):OriginIndex{
  result={nodes,parents,children,links,columns:new Map(model.columns.map(c=>[c.nodeId,c]))};indices.set(model,result);return result;
 }
 export function sheetColumns(model:OriginModel,selected:OriginNode):OriginColumn[]{const index=originIndex(model);return model.columns.filter(c=>c.nodeId===selected.id||index.nodes.get(c.nodeId)?.parentId===selected.id).sort((a,b)=>Number(index.nodes.get(a.nodeId)?.properties.columnOrder??-1)-Number(index.nodes.get(b.nodeId)?.properties.columnOrder??-1))}
-export interface XYLink {curveId?:string;layerId?:string;x:string|null;y:string;rowIndex?:boolean}
+export interface XYLink {curveId?:string;layerId?:string;x:string|null;y:string;errorX?:string;errorY?:string;rowIndex?:boolean}
 export interface PageResolution {graph:OriginNode;layers:OriginNode[];links:XYLink[];issues:{nodeId:string;code:string}[]}
 export function resolvePage(model:OriginModel,id:string):PageResolution{
  const index=originIndex(model);let graph=index.nodes.get(id);while(graph&&graph.kind!=='graph')graph=graph.parentId?index.nodes.get(graph.parentId):undefined;if(!graph)throw new Error('ORIGIN_PAGE_MISSING');

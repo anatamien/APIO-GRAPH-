@@ -1,3 +1,4 @@
+import {uncertaintyBounds} from './uncertainty';
 import {validateTable} from './diagramTable';
 import {validateAreas,syncArea} from './plotAreas';
 import check from './generated/aphValidator.js';
@@ -35,7 +36,7 @@ function validateDocument(input: unknown,previous?:ProjectDocument): Validation 
   for(const key of ['datasets','series','objects','calculations'] as const)unique(p[key],`/${key}`);
   const ds=new Map(p.datasets.map(d=>[d.id,d])); const cs=new Map(p.calculations.map(c=>[c.id,c]));
   for(const d of p.datasets){if(!unchanged.has(d.points))unique(d.points,`/datasets/${d.id}/points`);if(d.role==='derived'&&(!d.source.calculationId||!cs.has(d.source.calculationId)))errors.push(`/datasets/${d.id}: MISSING_CALCULATION`);if(d.role==='derived'&&d.source.kind!=='calculation')errors.push(`/datasets/${d.id}: INVALID_SOURCE`);if(d.role==='derived'&&cs.get(d.source.calculationId??'')?.resultDatasetId!==d.id)errors.push(`/datasets/${d.id}: RESULT_OWNERSHIP`);if(d.role==='raw'&&(d.source.kind==='calculation'||d.source.calculationId))errors.push(`/datasets/${d.id}: INVALID_SOURCE`)}
-  for(const s of p.series)if(!ds.has(s.datasetId))errors.push(`/series/${s.id}: MISSING_DATASET`);
+  for(const s of p.series){const d=ds.get(s.datasetId);if(!d)errors.push(`/series/${s.id}: MISSING_DATASET`);else if(d.points.length&&(s.uncertainty||d.uncertainty)&&!Object.values(uncertaintyBounds(d,s)).every(Number.isFinite))errors.push(`/series/${s.id}: UNCERTAINTY_RANGE_OVERFLOW`)}
   for(const [k,a]of Object.entries(p.axes)){
     if(!(a.min<a.max))errors.push(`/axes/${k}: INVALID_RANGE`);
     if(a.tickMode==='manual'){
@@ -48,12 +49,15 @@ function validateDocument(input: unknown,previous?:ProjectDocument): Validation 
   }
   if(!(p.viewport.xMin<p.viewport.xMax&&p.viewport.yMin<p.viewport.yMax))errors.push('/viewport: INVALID_RANGE');
   const anchor=(a:Anchor,path:string)=>{if(a.mode==='point'){const points=ds.get(a.datasetId)?.points;if(!points||!pointIndex(points).has(a.pointId))warnings.push(`${path}: MISSING_POINT`)}};
-  for(const o of p.objects){if(o.type==='table'){if(!p.schemaVersion.startsWith('1.2.'))errors.push('TABLE_NEWER_SCHEMA');if(o.table)errors.push(...validateTable(o.table))}const count=['text','line','marker','table'].includes(o.type)?1:2;if(o.anchors.length!==count)errors.push(`/objects/${o.id}/anchors: INVALID_COUNT`);if(o.type==='line'&&(!Number.isFinite(o.geometry.directionX)||!Number.isFinite(o.geometry.directionY)||Math.hypot(o.geometry.directionX??0,o.geometry.directionY??0)===0))errors.push(`/objects/${o.id}/geometry: INVALID_DIRECTION`);o.anchors.forEach((a,i)=>anchor(a,`/objects/${o.id}/anchors/${i}`))}
+  for(const o of p.objects){if(o.type==='table'){if(!/^1\.[23]\./.test(p.schemaVersion))errors.push('TABLE_NEWER_SCHEMA');if(o.table)errors.push(...validateTable(o.table))}const count=['text','line','marker','table'].includes(o.type)?1:2;if(o.anchors.length!==count)errors.push(`/objects/${o.id}/anchors: INVALID_COUNT`);if(o.type==='line'&&(!Number.isFinite(o.geometry.directionX)||!Number.isFinite(o.geometry.directionY)||Math.hypot(o.geometry.directionX??0,o.geometry.directionY??0)===0))errors.push(`/objects/${o.id}/geometry: INVALID_DIRECTION`);o.anchors.forEach((a,i)=>anchor(a,`/objects/${o.id}/anchors/${i}`))}
   anchor(p.legend.anchor,'/legend/anchor');
   const visited=new Set<string>(),active=new Set<string>();
   const visit=(did:string)=>{if(active.has(did)){errors.push(`/datasets/${did}: CYCLIC_CALCULATION`);return}if(visited.has(did))return;visited.add(did);active.add(did);const d=ds.get(did),c=d?.source.calculationId?cs.get(d.source.calculationId):undefined;if(c)for(const source of c.sourceDatasetIds)visit(source);active.delete(did)};
   const results=new Set<string>();
   for(const c of p.calculations){
+    if(c.kind==='peak-fit'&&(!c.resultDatasetId||c.status==='valid'&&!c.data?.peakFit))errors.push(`/calculations/${c.id}: MISSING_PEAK_FIT_RESULT`);
+    if(c.data?.peakFit&&(!(c.data.peakFit.range[0]<c.data.peakFit.range[1])||c.data.peakFit.rSquared!==null&&c.data.peakFit.rSquared>1+1e-12))errors.push(`/calculations/${c.id}: INVALID_PEAK_FIT_RESULT`);
+    if(c.kind==='peak-fit-output'){const master=cs.get(String(c.parameters.masterCalculationId));if(!master||master.kind!=='peak-fit'||!c.resultDatasetId||c.sourceDatasetIds.length!==2||c.sourceDatasetIds[0]!==master.resultDatasetId||c.sourceDatasetIds[1]!==master.sourceDatasetIds[0]||!['component','residual','baseline'].includes(String(c.parameters.output))||c.parameters.output==='component'&&(!Number.isInteger(c.parameters.componentIndex)||Number(c.parameters.componentIndex)<0||master.data?.peakFit&&Number(c.parameters.componentIndex)>=master.data.peakFit.components.length))errors.push(`/calculations/${c.id}: INVALID_PEAK_FIT_DEPENDENCY`)}
     if(c.kind==='area'&&c.parameters.baselineDatasetId!==undefined&&(typeof c.parameters.baselineDatasetId!=='string'||!c.sourceDatasetIds.includes(c.parameters.baselineDatasetId)))errors.push(`/calculations/${c.id}: MISSING_BASELINE_DEPENDENCY`);
     if((c.kind==='area'||c.kind==='peaks')&&c.resultDatasetId)errors.push(`/calculations/${c.id}: SCALAR_RESULT_DATASET`);
     if(c.kind==='peaks'&&c.status==='valid'&&!c.data?.peaks)errors.push(`/calculations/${c.id}: MISSING_PEAK_RESULTS`);

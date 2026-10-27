@@ -1,3 +1,4 @@
+import {PeakFitPanel} from './PeakFitPanel';
 import {analysisPreferences} from '../settings/toolPreferences';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Field, NumberField, Panel, Select } from '../../app/controls';
@@ -17,7 +18,7 @@ import type {SignalInteractionStore} from './signalInteraction';
 addTranslations(analysisTranslations);
 export interface AnalysisPanelProps { project: ProjectDocument; onChange: (label: string, transform: (p: ProjectDocument) => ProjectDocument) => void; t: (key: string) => string; onClose: () => void; sourceSeriesId?:string;calculationId?:string;onDataResults?:()=>void;interaction?:SignalInteractionStore;onRevealPeak?:(point:XY)=>void;onSourcePicked?:(id:string)=>void }
 
-export const analysisOperations: CalculationKind[] = ['linear-fit', 'polynomial-fit', 'exponential-fit', 'power-fit', 'savitzky-golay', 'moving-average', 'derivative', 'integral', 'interpolation', 'statistics','baseline','peaks','area'];
+export const analysisOperations: CalculationKind[] = ['linear-fit', 'polynomial-fit', 'exponential-fit', 'power-fit', 'savitzky-golay', 'moving-average', 'derivative', 'integral', 'interpolation', 'statistics','baseline','peaks','area','peak-fit'];
 const isFit = (kind: string) => kind.endsWith('-fit');
 const number = (value: number) => Number(value.toPrecision(6)).toString();
 const labels: Record<string, string> = { peakCount:'signal.peakCount',incompleteCount:'signal.incompleteCount',excludedFilters:'signal.excludedFilters',excludedUndefined:'signal.excludedUndefined',relativeHeight:'signal.relativeHeight',absoluteIntegral:'signal.absoluteIntegral',backgroundCount:'signal.backgroundCount',relativeChange:'signal.relativeChange',iterations:'signal.usedIterations', n: 'mathN', degree: 'degree', window: 'window', minX: 'mathMinX', maxX: 'mathMaxX', minY: 'mathMinY', maxY: 'mathMaxY', meanY: 'mathMeanY', medianY: 'mathMedianY', stdDevY: 'mathStdDevY', sumY: 'mathSumY', rangeX: 'mathRangeX', rangeY: 'mathRangeY', pearsonR: 'mathPearsonR', integral: 'integral', startX: 'rangeMin', endX: 'rangeMax' };
@@ -46,7 +47,7 @@ function equationFor(kind: CalculationKind, summary: CalculationResult['summary'
 }
 
 /** Only the SVG preview is reduced; the worker always receives full input arrays. */
-function PreviewPlot({ source, points, t }: { source: readonly XY[]; points: readonly XY[]; t: AnalysisPanelProps['t'] }) {
+export function PreviewPlot({ source, points, t }: { source: readonly XY[]; points: readonly XY[]; t: AnalysisPanelProps['t'] }) {
   const paths = useMemo(() => {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const values of [source, points]) for (const p of values) { minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x); minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y); }
@@ -77,7 +78,7 @@ interface Preview { result: CalculationResult; kind: CalculationKind; parameters
 export function AnalysisPanel(props:AnalysisPanelProps){
  const [operation,setOperation]=useState<CalculationKind>(()=>props.project.calculations.find(c=>c.id===props.calculationId)?.kind??'linear-fit');
  const [source,setSource]=useState(props.sourceSeriesId);
- return isSignalKind(operation)?<SignalAnalysisPanel key={operation} {...props} sourceSeriesId={source} onSourcePicked={setSource} operation={operation} onOperation={setOperation}/>:<LegacyAnalysisPanel key={operation} {...props} sourceSeriesId={source} onSourcePicked={setSource} operation={operation} onOperation={setOperation}/>;
+ return operation==='peak-fit'?<PeakFitPanel key={operation} {...props} sourceSeriesId={source} onSourcePicked={setSource} onOperation={setOperation}/>:isSignalKind(operation)?<SignalAnalysisPanel key={operation} {...props} sourceSeriesId={source} onSourcePicked={setSource} operation={operation} onOperation={setOperation}/>:<LegacyAnalysisPanel key={operation} {...props} sourceSeriesId={source} onSourcePicked={setSource} operation={operation} onOperation={setOperation}/>;
 }
 function LegacyAnalysisPanel({ project, onChange, t, onClose,sourceSeriesId,calculationId,onDataResults,operation,onOperation,onSourcePicked }: AnalysisPanelProps&{operation:CalculationKind;onOperation:(kind:CalculationKind)=>void}) {
   const editing=project.calculations.find(c=>c.id===calculationId),initialDataset=project.datasets.find(d=>d.id===(project.series.find(s=>s.id===sourceSeriesId)?.datasetId??sourceSeriesId?.replace(/^dataset:/,'')))??project.datasets[0],saved=editing?.parameters??analysisPreferences(operation,initialDataset?.points.length),initialRange=saved.fitRange??saved.range;

@@ -216,3 +216,5 @@ export async function clearWorkspaceRecoveryBytes(){await invoke('workspace_reco
 
 /** Passive binary extraction: explicit Save dialog, no execution and no overwrite grant reuse. */
 export async function savePassiveBytes(bytes:Uint8Array,extension:'bin'|'opj'|'opju'|'org'|'png'|'jpg'|'gif'|'bmp'|'pdf'|'txt',name='Origin-source'):Promise<void>{if(bytes.length>MAX_FILE_BYTES)throw new Error('FILE_TOO_LARGE');if(isDesktop())await writeNative('save_passive_bytes',bytes,{'x-apio-extension':extension});else download(bytes,name.replace(/[\\/\x00-\x1f]/g,'_').replace(/\.(bin|opj|opju|org)$/i,'')+'.'+extension,'application/octet-stream')}
+
+export async function saveScientificStyleFile(text:string):Promise<void>{const bytes=new TextEncoder().encode(text);if(bytes.length>256*1024)throw new Error('STYLE_INVALID');if(isDesktop())await writeNative('save_passive_bytes',bytes,{'x-apio-extension':'apiostyle'});else download(bytes,'APIO-style.apiostyle','application/json')}

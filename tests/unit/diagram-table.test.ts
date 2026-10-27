@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {makeDiagramTable,tableObject,resizeTableStructure,pasteTable,mergeTable,validateTable,layoutTable,tableTSV} from '../../src/domain/diagramTable';
+import {makeDiagramTable,tableObject,resizeTableStructure,pasteTable,mergeTable,validateTable,layoutTable,tableTSV,growTableContent} from '../../src/domain/diagramTable';
 import {createProject,id} from '../../src/domain/model';
 import {validateProject,serialize,deserialize} from '../../src/domain/project';
 import {History} from '../../src/domain/commands';
@@ -15,4 +15,8 @@ it('paste expands only explicitly and merges keep hidden values; row/column inse
 });
 it('committed table edits undo once and layout is reused for placements and every pan frame',()=>{
  const p=createProject();p.schemaVersion='1.2.0';p.objects=[tableObject([{mode:'page',pageX:0,pageY:0},{mode:'page',pageX:.8,pageY:.8}],makeDiagramTable(50,20))];const h=new History(p),o=p.objects[0],layout=layoutTable(o.table!,o.style);for(let i=0;i<100;i++)expect(layoutTable(o.table!,o.style)).toBe(layout);h.execute('EditObject',q=>({...q,objects:[{...o,table:pasteTable(o.table!,0,0,'Scientific Δ μ',false)}]}));h.undo();expect(h.current).toBe(p);h.redo();expect(h.current.objects[0].table!.cells[0].text[0].text).toBe('Scientific Δ μ');expect(h.current.datasets).toBe(p.datasets);
+});
+
+it('content grows each affected column and row without wrapping numbers, shrinking manual sizes or changing IDs/rich runs',()=>{
+ const table=pasteTable(makeDiagramTable(2,2),0,0,'Element\t40.52 ± 3.39\nH2O\t1\n',false);table.columns[0].size=220;table.columns[1].size=50;table.cells[2].text=[{text:'H',baseline:'normal',bold:false,italic:false},{text:'2',baseline:'sub',bold:false,italic:false},{text:'O',baseline:'normal',bold:false,italic:false}];table.cells[3].text=[{text:'One\nTwo\nThree',baseline:'normal',bold:false,italic:false}];const style=tableObject([]).style,next=growTableContent(table,style);expect(next.columns[0].size).toBe(220);expect(next.columns[1].size).toBeGreaterThan(120);expect(next.rows[1].size).toBeGreaterThan(50);expect(next.cells).toBe(table.cells);expect(layoutTable(next,style).cells.find(c=>c.index===1)!.runs.map(r=>r.text).join('')).toBe('40.52 ± 3.39');expect(growTableContent(next,style)).toBe(next);expect(next.cells.every(c=>c.align==='center')).toBe(true);
 });
