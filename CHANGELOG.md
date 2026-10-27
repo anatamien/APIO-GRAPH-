@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.5 — 2026-10-27
+
+- Keep an explicitly opened object inspector available while selecting cells or resizing the same table. Changing or clearing the object selection resets that permission, so selecting it again does not reopen properties without a double-click.
+- Includes marquee/group movement, mixed-object alignment and equal gaps, safe cell Delete, infinite blank-sheet navigation and legacy APH compatibility from the versions below.
+
 ## 1.3.4 — 2026-10-27
 
 - Selecting an object always clears its previous explicit inspector state. After deselecting an inspected object, one click selects it without reopening properties; double-click remains the explicit properties action.

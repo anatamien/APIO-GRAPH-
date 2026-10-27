@@ -4,7 +4,7 @@
 
 **Scientific data. Precise graphs.**
 
-![Version 1.3.4](https://img.shields.io/badge/version-1.3.4-365C86)
+![Version 1.3.5](https://img.shields.io/badge/version-1.3.5-365C86)
 ![Windows x64](https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-202024)
 ![GPLv3](https://img.shields.io/badge/license-GPLv3-698464)
 
@@ -20,7 +20,7 @@ A local desktop editor for plotting, analysing and presenting X–Y data.
 
 ## Features
 
-- **1.3.4 document workflow**: marquee selection and shared object movement, mixed-object edge/center and equal-gap guides, double-click drawing properties, safe cell-range Delete and unbounded blank-sheet navigation with F9.
+- **1.3.5 document workflow**: marquee selection and shared object movement, mixed-object edge/center and equal-gap guides, double-click drawing properties, safe cell-range Delete and unbounded blank-sheet navigation with F9.
 
 - **Data and results**: source/derived dependencies, editable processing parameters and targeted recalculation with independent curve styles.
 - **New in 1.3**: bounded Gaussian/Lorentzian/pseudo-Voigt peak fitting, independent components and residuals, symmetric X/Y uncertainties, portable scientific appearance presets. [Methods and limits](docs/13-PEAK-FITTING-AND-STYLES.md).
@@ -47,14 +47,14 @@ Open **Graph properties → Data and results** to follow each dataset through it
 
 ## Install on Windows
 
-Download `APIO-GRAPH-1.3.4-windows-x64-offline-setup.exe` from [Releases](https://github.com/anatamien/APIO-GRAPH-/releases/latest) and run it. Choose English or Russian. The installer installs for the current user, adds a Start menu entry and registers `.aph` projects.
+Download `APIO-GRAPH-1.3.5-windows-x64-offline-setup.exe` from [Releases](https://github.com/anatamien/APIO-GRAPH-/releases/latest) and run it. Choose English or Russian. The installer installs for the current user, adds a Start menu entry and registers `.aph` projects.
 
 The Microsoft WebView2 offline installer is included. End users do not need to separately download WebView2, Node.js, Rust, Visual Studio or development tools. Initial installation can run without internet access. The distribution target is **Windows 10/11 x64**; this is not a Windows 7, ARM64 or macOS installer. Enterprise policies can restrict software installation.
 
 This release is **not Authenticode-signed**. Windows may display an unknown-publisher or SmartScreen prompt. Verify file integrity against `SHA256SUMS.txt` from the same release; a checksum is not a publisher signature.
 
 ```powershell
-Get-FileHash .\APIO-GRAPH-1.3.4-windows-x64-offline-setup.exe -Algorithm SHA256
+Get-FileHash .\APIO-GRAPH-1.3.5-windows-x64-offline-setup.exe -Algorithm SHA256
 ```
 
 Your datasets, `.aph` documents and exported figures remain yours. The application's code license does not apply to your scientific data.
@@ -76,7 +76,7 @@ pnpm tauri build --ci --bundles nsis -- --locked
 
 Output: `src-tauri/target/release/bundle/nsis/`. The build machine needs internet access to obtain dependencies, NSIS and the Microsoft runtime. End users do not need those downloads.
 
-The source includes a macOS target. A currently verified, signed/notarized macOS 1.3.4 distribution is not provided; Windows release acceptance does not establish macOS compatibility.
+The source includes a macOS target. A currently verified, signed/notarized macOS 1.3.5 distribution is not provided; Windows release acceptance does not establish macOS compatibility.
 
 ## Verification
 
