@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.4 — 2026-10-27
+
+- Selecting an object always clears its previous explicit inspector state. After deselecting an inspected object, one click selects it without reopening properties; double-click remains the explicit properties action.
+- Includes the complete object-selection, table and blank-sheet improvements below.
+
 ## 1.3.3 — 2026-10-27
 
 - Resize infinite-sheet tables at negative coordinates without jumping to the old page edge. Legacy page-anchored table corners convert to sheet coordinates when resized beyond that boundary.

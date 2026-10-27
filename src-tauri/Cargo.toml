@@ -1,6 +1,6 @@
 [package]
 name = "apio-graph"
-version = "1.3.3"
+version = "1.3.4"
 license = "GPL-3.0-only"
 description = "APIO GRAPH scientific graph editor"
 edition = "2021"
