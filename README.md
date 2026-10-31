@@ -8,7 +8,7 @@
 ![Windows x64](https://img.shields.io/badge/Windows-10%20%2F%2011%20%C2%B7%20x64-202024)
 ![GPLv3](https://img.shields.io/badge/license-GPLv3-698464)
 
-A local desktop editor for plotting, analysing and presenting X–Y data.
+**Free, open-source scientific plotting and data analysis software for Windows.** Import X–Y measurements from CSV, TXT or TSV files, process signals, fit peaks and export scientific graphs as SVG, PNG or JPEG. APIO GRAPH runs locally, without an account or cloud service.
 
 **[Download for Windows x64](https://github.com/anatamien/APIO-GRAPH-/releases/latest)** · [All releases](https://github.com/anatamien/APIO-GRAPH-/releases) · [Report a bug](https://github.com/anatamien/APIO-GRAPH-/issues/new/choose)
 
@@ -17,6 +17,17 @@ A local desktop editor for plotting, analysing and presenting X–Y data.
 </div>
 
 ![APIO GRAPH in the light theme](docs/images/editor-light.png)
+
+## Scientific plotting workflows
+
+APIO GRAPH is a desktop graphing tool for students, researchers and engineers working with numerical X–Y data. It supports these workflows:
+
+- **Plot data from CSV, TXT or TSV:** import measured X–Y columns, manage multiple curves and adjust axes, markers, labels and legends.
+- **Fit and inspect peaks:** fit supported Gaussian, Lorentzian and pseudo-Voigt profiles; inspect components and residuals. See [peak-fitting methods and limitations](docs/13-PEAK-FITTING-AND-STYLES.md).
+- **Process experimental signals:** use baseline correction, peak detection, integration, smoothing with Savitzky–Golay, regression and other numerical operations. See [signal-analysis methods](docs/10-SIGNAL-ANALYSIS.md).
+- **Prepare graphs for reports and publications:** customize scientific labels, uncertainties and annotations, then export vector SVG or raster PNG/JPEG with size and DPI settings, including monochrome output.
+
+For some 2D plotting and analysis tasks, APIO GRAPH may serve as a free, open-source alternative to OriginLab Origin or OriginPro. **It is not a feature-complete Origin replacement.** Viewing and transferring Origin content is experimental and limited to documented supported objects; see [Origin compatibility](docs/11-ORIGIN-COMPATIBILITY.md).
 
 ## Features
 
@@ -58,6 +69,18 @@ Get-FileHash .\APIO-GRAPH-1.3.5-windows-x64-offline-setup.exe -Algorithm SHA256
 ```
 
 Your datasets, `.aph` documents and exported figures remain yours. The application's code license does not apply to your scientific data.
+
+## Frequently asked questions
+
+**Is APIO GRAPH free and open source?** Yes. The application source code is published under GPL-3.0-only. There is no account, subscription or cloud service required to use the Windows installer.
+
+**Can I plot CSV data and export publication figures?** Yes. APIO GRAPH imports TXT/CSV/TSV numerical data and exports customizable SVG, PNG and JPEG graphs. Review the exported figure and any journal-specific requirements before submission.
+
+**Can I use it for X-ray diffraction (XRD) or spectroscopy plots?** You can plot X–Y measurements exported as supported text or table data, and apply the documented peak and signal-analysis operations. APIO GRAPH does not claim instrument-specific raw-file decoding or automatic phase identification.
+
+**Can it open Origin or OriginPro projects?** Experimental Origin viewing and partial transfer are available for supported content. Unsupported objects and formats remain limited; complete visual or analytical compatibility is not guaranteed. See [the compatibility details](docs/11-ORIGIN-COMPATIBILITY.md).
+
+**Does it run on macOS or Linux?** The published 1.3.5 installer is for Windows 10/11 x64 only. A tested macOS or Linux release is not provided.
 
 ## Build from source
 
